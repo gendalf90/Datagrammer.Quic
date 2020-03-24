@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Datagrammer.Quic
+namespace Datagrammer.Quic.Protocol
 {
     internal static class UnsafeBitConverter
     {

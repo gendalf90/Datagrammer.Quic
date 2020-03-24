@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Net;
 
-namespace Datagrammer.Quic
+namespace Datagrammer.Quic.Protocol
 {
     internal static class NetworkBitConverter
     {

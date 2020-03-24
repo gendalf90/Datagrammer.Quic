@@ -1,10 +1,29 @@
 ﻿using System;
 
-namespace Datagrammer.Quic
+namespace Datagrammer.Quic.Protocol
 {
     internal static class VariableLengthEncoding
     {
-        public static bool TryDecodeValue(ReadOnlySpan<byte> bytes, out ulong value, out int decodedLength)
+        public static bool TryDecode32(ReadOnlySpan<byte> bytes, out int value, out int decodedLength)
+        {
+            value = 0;
+
+            if (!TryDecode(bytes, out var tokenLength, out decodedLength))
+            {
+                return false;
+            }
+
+            if (tokenLength > int.MaxValue)
+            {
+                return false;
+            }
+
+            value = (int)tokenLength;
+
+            return true;
+        }
+
+        public static bool TryDecode(ReadOnlySpan<byte> bytes, out ulong value, out int decodedLength)
         {
             value = 0;
             decodedLength = 0;
