@@ -23,6 +23,25 @@ namespace Datagrammer.Quic.Protocol
             return true;
         }
 
+        public static bool TryDecode64(ReadOnlySpan<byte> bytes, out long value, out int decodedLength)
+        {
+            value = 0;
+
+            if (!TryDecode(bytes, out var tokenLength, out decodedLength))
+            {
+                return false;
+            }
+
+            if (tokenLength > long.MaxValue)
+            {
+                return false;
+            }
+
+            value = (long)tokenLength;
+
+            return true;
+        }
+
         public static bool TryDecode(ReadOnlySpan<byte> bytes, out ulong value, out int decodedLength)
         {
             value = 0;

@@ -47,9 +47,12 @@ namespace Datagrammer.Quic.Protocol.Packet
             }
 
             var packetNumberBytes = bytes.Slice(0, numberLength);
-            var packetNumberValue = NetworkBitConverter.ToUInt32(packetNumberBytes.Span);
+            
+            if(!PacketNumber.TryParse32(packetNumberBytes, out packetNumber))
+            {
+                return false;
+            }
 
-            packetNumber = new PacketNumber(packetNumberValue);
             remainings = bytes.Slice(numberLength);
 
             return true;
