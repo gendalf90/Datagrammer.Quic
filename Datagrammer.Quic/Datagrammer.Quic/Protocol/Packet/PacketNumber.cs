@@ -4,12 +4,12 @@ namespace Datagrammer.Quic.Protocol.Packet
 {
     public readonly struct PacketNumber
     {
-        private readonly ulong value;
-
-        public PacketNumber(ulong value)
+        internal PacketNumber(ulong number)
         {
-            this.value = value;
+            Number = number;
         }
+
+        public ulong Number { get; }
 
         public static bool TryParse32(ReadOnlyMemory<byte> bytes, out PacketNumber packetNumber)
         {

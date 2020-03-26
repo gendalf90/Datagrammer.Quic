@@ -2,7 +2,7 @@
 {
     public readonly struct AckRange
     {
-        public AckRange(PacketNumber start, PacketNumber end)
+        internal AckRange(PacketNumber start, PacketNumber end)
         {
             Start = start;
             End = end;
