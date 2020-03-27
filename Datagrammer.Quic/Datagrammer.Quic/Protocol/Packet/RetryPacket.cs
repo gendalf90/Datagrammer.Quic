@@ -7,14 +7,14 @@ namespace Datagrammer.Quic.Protocol.Packet
         private RetryPacket(PacketVersion version,
                             PacketConnectionId destinationConnectionId,
                             PacketConnectionId sourceConnectionId,
-                            PacketRetryToken token,
-                            PacketRetryIntegrityTag tag)
+                            PacketToken retryToken,
+                            PacketRetryIntegrityTag retryIntegrityTag)
         {
             Version = version;
             DestinationConnectionId = destinationConnectionId;
             SourceConnectionId = sourceConnectionId;
-            Token = token;
-            Tag = tag;
+            RetryToken = retryToken;
+            RetryIntegrityTag = retryIntegrityTag;
         }
 
         public PacketVersion Version { get; }
@@ -23,9 +23,9 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public PacketConnectionId SourceConnectionId { get; }
 
-        public PacketRetryToken Token { get; }
+        public PacketToken RetryToken { get; }
 
-        public PacketRetryIntegrityTag Tag { get; }
+        public PacketRetryIntegrityTag RetryIntegrityTag { get; }
 
         public static bool TryParse(ReadOnlyMemory<byte> bytes, out RetryPacket result)
         {
@@ -66,7 +66,7 @@ namespace Datagrammer.Quic.Protocol.Packet
                 return false;
             }
 
-            var token = new PacketRetryToken(beforeTagBytes);
+            var token = new PacketToken(beforeTagBytes);
 
             result = new RetryPacket(version,
                                      destinationConnectionId,

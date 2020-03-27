@@ -4,7 +4,7 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 {
     public readonly struct EcnCounts
     {
-        public EcnCounts(ulong ect0, ulong ect1, ulong ce)
+        private EcnCounts(ulong ect0, ulong ect1, ulong ce)
         {
             Ect0 = ect0;
             Ect1 = ect1;

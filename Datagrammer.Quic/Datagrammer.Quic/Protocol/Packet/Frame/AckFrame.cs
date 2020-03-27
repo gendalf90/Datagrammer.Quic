@@ -29,12 +29,10 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
                 return false;
             }
 
-            if(type != 2 || type != 3)
+            if(!type.IsAck())
             {
                 return false;
             }
-
-            var hasEcnFeedback = type == 3;
 
             if(!PacketNumber.TryParse(afterTypeRemainings, out var largestAcknowledgedPacketNumber, out var afterLargestNumberBytes))
             {
@@ -61,14 +59,14 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 
             var rangesBytes = afterRangesCountBytes.Slice(0, afterRangesCountBytes.Length - afterRangesBytes.Length);
             
-            if(!EcnCounts.TryParse(afterRangesBytes, out var ecnCounts, out var afterEcnBytes) && hasEcnFeedback)
+            if(!EcnCounts.TryParse(afterRangesBytes, out var ecnCounts, out var afterEcnBytes) && type.HasAckEcnFeedback())
             {
                 return false;
             }
 
             var ranges = new AckRanges(largestAcknowledgedPacketNumber, rangesBytes);
-            var ecnFeedback = hasEcnFeedback ? ecnCounts : new EcnCounts?();
-            var remainingBytes = hasEcnFeedback ? afterEcnBytes : afterRangesBytes;
+            var ecnFeedback = type.HasAckEcnFeedback() ? ecnCounts : new EcnCounts?();
+            var remainingBytes = type.HasAckEcnFeedback() ? afterEcnBytes : afterRangesBytes;
 
             result = new AckFrame(delay, ranges, ecnFeedback);
             remainings = remainingBytes;

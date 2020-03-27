@@ -6,7 +6,7 @@ namespace Datagrammer.Quic.Protocol.Packet
     {
         private readonly ReadOnlyMemory<byte> bytes;
 
-        private PacketToken(ReadOnlyMemory<byte> bytes)
+        internal PacketToken(ReadOnlyMemory<byte> bytes)
         {
             this.bytes = bytes;
         }
