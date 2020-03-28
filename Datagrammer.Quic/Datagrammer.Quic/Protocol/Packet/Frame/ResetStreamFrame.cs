@@ -24,30 +24,16 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             result = new ResetStreamFrame();
             remainings = ReadOnlyMemory<byte>.Empty;
 
-            if (!FrameType.TryParseFrameType(bytes, out var type, out var afterTypeRemainings))
+            var type = FrameType.Parse(bytes, out var afterTypeRemainings);
+
+            if (!type.IsResetStream())
             {
                 return false;
             }
 
-            if(!type.IsResetStream())
-            {
-                return false;
-            }
-
-            if (!StreamId.TryParse(afterTypeRemainings, out var streamId, out var afterStreamIdBytes))
-            {
-                return false;
-            }
-
-            if(!ApplicationError.TryParse(afterStreamIdBytes, out var applicationError, out var afterApplicationErrorBytes))
-            {
-                return false;
-            }
-
-            if (!VariableLengthEncoding.TryDecode32(afterApplicationErrorBytes.Span, out var finalSize, out var decodedLength))
-            {
-                return false;
-            }
+            var streamId = StreamId.Parse(afterTypeRemainings, out var afterStreamIdBytes);
+            var applicationError = ApplicationError.Parse(afterStreamIdBytes, out var afterApplicationErrorBytes);
+            var finalSize = VariableLengthEncoding.Decode32(afterApplicationErrorBytes.Span, out var decodedLength);
 
             result = new ResetStreamFrame(streamId, applicationError, finalSize);
             remainings = afterApplicationErrorBytes.Slice(decodedLength);

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
@@ -11,36 +12,25 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public ulong Number { get; }
 
-        public static bool TryParse32(ReadOnlyMemory<byte> bytes, out PacketNumber packetNumber)
+        public static PacketNumber Parse32(ReadOnlyMemory<byte> bytes)
         {
-            packetNumber = new PacketNumber();
-
             if (bytes.IsEmpty || bytes.Length > 4)
             {
-                return false;
+                throw new EncodingException();
             }
 
             var value = NetworkBitConverter.ToUInt32(bytes.Span);
 
-            packetNumber = new PacketNumber(value);
-
-            return true;
+            return new PacketNumber(value);
         }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out PacketNumber packetNumber, out ReadOnlyMemory<byte> remainings)
+        public static PacketNumber Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            packetNumber = new PacketNumber();
-            remainings = ReadOnlyMemory<byte>.Empty;
+            var value = VariableLengthEncoding.Decode(bytes.Span, out var decodedLength);
 
-            if(!VariableLengthEncoding.TryDecode(bytes.Span, out var value, out var decodedLength))
-            {
-                return false;
-            }
-
-            packetNumber = new PacketNumber(value);
             remainings = bytes.Slice(decodedLength);
 
-            return true;
+            return new PacketNumber(value);
         }
     }
 }

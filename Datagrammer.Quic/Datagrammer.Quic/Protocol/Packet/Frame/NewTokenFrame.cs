@@ -16,20 +16,14 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             result = new NewTokenFrame();
             remainings = ReadOnlyMemory<byte>.Empty;
 
-            if (!FrameType.TryParseFrameType(bytes, out var type, out var afterTypeRemainings))
-            {
-                return false;
-            }
+            var type = FrameType.Parse(bytes, out var afterTypeRemainings);
 
             if (!type.IsNewToken())
             {
                 return false;
             }
 
-            if(!PacketToken.TryParse(afterTypeRemainings, out var token, out var afterTokenBytes))
-            {
-                return false;
-            }
+            var token = PacketToken.Parse(afterTypeRemainings, out var afterTokenBytes);
             
             result = new NewTokenFrame(token);
             remainings = afterTokenBytes;

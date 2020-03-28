@@ -31,10 +31,7 @@ namespace Datagrammer.Quic.Protocol.Packet
         {
             result = new RetryPacket();
 
-            if (!PacketFirstByte.TryParse(bytes, out var firstByte, out var afterFirstByteBytes))
-            {
-                return false;
-            }
+            var firstByte = PacketFirstByte.Parse(bytes, out var afterFirstByteBytes);
 
             if (firstByte.IsShortHeader())
             {
@@ -46,26 +43,10 @@ namespace Datagrammer.Quic.Protocol.Packet
                 return false;
             }
 
-            if (!PacketVersion.TryParse(afterFirstByteBytes, out var version, out var afterVersionBytes))
-            {
-                return false;
-            }
-
-            if (!PacketConnectionId.TryParse(afterVersionBytes, out var destinationConnectionId, out var afterDestinationConnectionIdBytes))
-            {
-                return false;
-            }
-
-            if (!PacketConnectionId.TryParse(afterDestinationConnectionIdBytes, out var sourceConnectionId, out var afterSourceConnectionIdBytes))
-            {
-                return false;
-            }
-
-            if(!PacketRetryIntegrityTag.TryParse(afterSourceConnectionIdBytes, out var tag, out var beforeTagBytes))
-            {
-                return false;
-            }
-
+            var version = PacketVersion.Parse(afterFirstByteBytes, out var afterVersionBytes);
+            var destinationConnectionId = PacketConnectionId.Parse(afterVersionBytes, out var afterDestinationConnectionIdBytes);
+            var sourceConnectionId = PacketConnectionId.Parse(afterDestinationConnectionIdBytes, out var afterSourceConnectionIdBytes);
+            var tag = PacketRetryIntegrityTag.Parse(afterSourceConnectionIdBytes, out var beforeTagBytes);
             var token = new PacketToken(beforeTagBytes);
 
             result = new RetryPacket(version,

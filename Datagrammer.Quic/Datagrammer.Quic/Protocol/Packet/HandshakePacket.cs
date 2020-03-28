@@ -32,10 +32,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             result = new HandshakePacket();
             remainings = ReadOnlyMemory<byte>.Empty;
 
-            if (!PacketFirstByte.TryParse(bytes, out var firstByte, out var afterFirstByteBytes))
-            {
-                return false;
-            }
+            var firstByte = PacketFirstByte.Parse(bytes, out var afterFirstByteBytes);
 
             if (firstByte.IsShortHeader())
             {
@@ -47,30 +44,13 @@ namespace Datagrammer.Quic.Protocol.Packet
                 return false;
             }
 
-            if (!PacketVersion.TryParse(afterFirstByteBytes, out var version, out var afterVersionBytes))
-            {
-                return false;
-            }
+            var version = PacketVersion.Parse(afterFirstByteBytes, out var afterVersionBytes);
+            var destinationConnectionId = PacketConnectionId.Parse(afterVersionBytes, out var afterDestinationConnectionIdBytes);
+            var sourceConnectionId = PacketConnectionId.Parse(afterDestinationConnectionIdBytes, out var afterSourceConnectionIdBytes);
 
-            if (!PacketConnectionId.TryParse(afterVersionBytes, out var destinationConnectionId, out var afterDestinationConnectionIdBytes))
-            {
-                return false;
-            }
+            PacketLength.CheckPacketLength(afterSourceConnectionIdBytes, out var packetBytes, out var afterPacketBytes);
 
-            if (!PacketConnectionId.TryParse(afterDestinationConnectionIdBytes, out var sourceConnectionId, out var afterSourceConnectionIdBytes))
-            {
-                return false;
-            }
-
-            if (!PacketLength.CheckPacketLength(afterSourceConnectionIdBytes, out var packetBytes, out var afterPacketBytes))
-            {
-                return false;
-            }
-
-            if (!firstByte.TryParseNumber(packetBytes, out var number, out var afterPacketNumberRemainings))
-            {
-                return false;
-            }
+            var number = firstByte.ParseNumber(packetBytes, out var afterPacketNumberRemainings);
 
             remainings = afterPacketBytes;
             result = new HandshakePacket(version,

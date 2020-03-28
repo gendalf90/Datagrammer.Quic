@@ -1,9 +1,12 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
     public readonly struct PacketConnectionId : IEquatable<PacketConnectionId>
     {
+        private const int MaxLength = 20;
+
         private readonly ReadOnlyMemory<byte> bytes;
 
         private PacketConnectionId(ReadOnlyMemory<byte> bytes)
@@ -36,30 +39,34 @@ namespace Datagrammer.Quic.Protocol.Packet
             return !first.Equals(second);
         }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out PacketConnectionId result, out ReadOnlyMemory<byte> remainings)
+        public static PacketConnectionId Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            result = new PacketConnectionId();
             remainings = ReadOnlyMemory<byte>.Empty;
 
             if (bytes.IsEmpty)
             {
-                return false;
+                throw new EncodingException();
             }
 
             var length = bytes.Span[0];
+
+            if(length > MaxLength)
+            {
+                throw new EncodingException();
+            }
+
             var afterLengthBytes = bytes.Slice(1);
 
             if (afterLengthBytes.Length < length)
             {
-                return false;
+                throw new EncodingException();
             }
 
             var resultBytes = afterLengthBytes.Slice(0, length);
 
-            result = new PacketConnectionId(resultBytes);
             remainings = afterLengthBytes.Slice(length);
 
-            return true;
+            return new PacketConnectionId(resultBytes);
         }
     }
 }

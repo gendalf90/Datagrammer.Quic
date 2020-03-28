@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet.Frame
 {
@@ -20,33 +21,21 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             result = new CryptoFrame();
             remainings = ReadOnlyMemory<byte>.Empty;
 
-            if (!FrameType.TryParseFrameType(bytes, out var type, out var afterTypeRemainings))
-            {
-                return false;
-            }
+            var type = FrameType.Parse(bytes, out var afterTypeRemainings);
 
             if (!type.IsCrypto())
             {
                 return false;
             }
 
-            if (!VariableLengthEncoding.TryDecode32(afterTypeRemainings.Span, out var offset, out var decodedLength))
-            {
-                return false;
-            }
-
+            var offset = VariableLengthEncoding.Decode32(afterTypeRemainings.Span, out var decodedLength);
             var afterOffsetBytes = afterTypeRemainings.Slice(decodedLength);
-
-            if (!VariableLengthEncoding.TryDecode32(afterOffsetBytes.Span, out var length, out decodedLength))
-            {
-                return false;
-            }
-
+            var length = VariableLengthEncoding.Decode32(afterOffsetBytes.Span, out decodedLength);
             var afterLengthBytes = afterOffsetBytes.Slice(decodedLength);
 
             if(afterLengthBytes.Length < length)
             {
-                return false;
+                throw new EncodingException();
             }
 
             var data = afterLengthBytes.Slice(0, length);

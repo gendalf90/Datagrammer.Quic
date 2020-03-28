@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet.Frame
 {
@@ -19,22 +20,13 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             return GetDelayByExponent(DefaultExponent);
         }
 
-        public bool TryGetDelayByExponent(int exponent, out TimeSpan delay)
+        public TimeSpan GetDelayByExponent(int exponent)
         {
-            delay = new TimeSpan();
-
             if(exponent < 0 || exponent > MaxExponent)
             {
-                return false;
+                throw new EncodingException();
             }
 
-            delay = GetDelayByExponent(exponent);
-
-            return true;
-        }
-
-        private TimeSpan GetDelayByExponent(int exponent)
-        {
             var exponentMultiplicator = (long)Math.Pow(2, exponent);
             var microseconds = value * exponentMultiplicator;
             var ticks = microseconds * 10;
@@ -42,20 +34,13 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             return TimeSpan.FromTicks(ticks);
         }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out AckDelay result, out ReadOnlyMemory<byte> remainings)
+        public static AckDelay Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            result = new AckDelay();
-            remainings = ReadOnlyMemory<byte>.Empty;
+            var delay = VariableLengthEncoding.Decode64(bytes.Span, out var decodedLength);
 
-            if(!VariableLengthEncoding.TryDecode64(bytes.Span, out var delay, out var decodedLength))
-            {
-                return false;
-            }
-
-            result = new AckDelay(delay);
             remainings = bytes.Slice(decodedLength);
 
-            return true;
+            return new AckDelay(delay);
         }
     }
 }

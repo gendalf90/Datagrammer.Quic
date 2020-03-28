@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
@@ -36,36 +37,30 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public bool IsRetryType() => isRetryType;
 
-        public bool TryParseNumber(ReadOnlyMemory<byte> bytes, out PacketNumber packetNumber, out ReadOnlyMemory<byte> remainings)
+        public PacketNumber ParseNumber(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            packetNumber = new PacketNumber();
             remainings = bytes;
 
             if (bytes.Length < numberLength)
             {
-                return false;
+                throw new EncodingException();
             }
 
             var packetNumberBytes = bytes.Slice(0, numberLength);
-            
-            if(!PacketNumber.TryParse32(packetNumberBytes, out packetNumber))
-            {
-                return false;
-            }
+            var packetNumber = PacketNumber.Parse32(packetNumberBytes);
 
             remainings = bytes.Slice(numberLength);
 
-            return true;
+            return packetNumber;
         }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out PacketFirstByte result, out ReadOnlyMemory<byte> remainings)
+        public static PacketFirstByte Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            result = new PacketFirstByte();
             remainings = ReadOnlyMemory<byte>.Empty;
 
             if(bytes.IsEmpty)
             {
-                return false;
+                throw new EncodingException();
             }
 
             var first = bytes.Span[0];
@@ -73,7 +68,7 @@ namespace Datagrammer.Quic.Protocol.Packet
 
             if(!isFixedBitValid)
             {
-                return false;
+                throw new EncodingException();
             }
 
             var isShortHeader = !Convert.ToBoolean(first >> 7);
@@ -84,15 +79,14 @@ namespace Datagrammer.Quic.Protocol.Packet
             var isRetryType = packetType == 3;
             var numberLength = (first & 3) + 1;
 
-            result = new PacketFirstByte(isShortHeader,
-                                         isInitialType,
-                                         isRttType,
-                                         isHandshakeType,
-                                         isRetryType,
-                                         numberLength);
             remainings = bytes.Slice(1);
 
-            return true;
+            return new PacketFirstByte(isShortHeader,
+                                       isInitialType,
+                                       isRttType,
+                                       isHandshakeType,
+                                       isRetryType,
+                                       numberLength);
         }
     }
 }

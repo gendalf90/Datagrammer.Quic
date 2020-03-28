@@ -1,84 +1,73 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol
 {
     internal static class VariableLengthEncoding
     {
-        public static bool TryDecode32(ReadOnlySpan<byte> bytes, out int value, out int decodedLength)
+        public static int Decode32(ReadOnlySpan<byte> bytes, out int decodedLength)
         {
-            value = 0;
+            var value = Decode(bytes, out decodedLength);
 
-            if (!TryDecode(bytes, out var tokenLength, out decodedLength))
+            if (value > int.MaxValue)
             {
-                return false;
+                throw new EncodingException();
             }
 
-            if (tokenLength > int.MaxValue)
-            {
-                return false;
-            }
-
-            value = (int)tokenLength;
-
-            return true;
+            return (int)value;
         }
 
-        public static bool TryDecode64(ReadOnlySpan<byte> bytes, out long value, out int decodedLength)
+        public static long Decode64(ReadOnlySpan<byte> bytes, out int decodedLength)
         {
-            value = 0;
+            var value = Decode(bytes, out decodedLength);
 
-            if (!TryDecode(bytes, out var tokenLength, out decodedLength))
+            if (value > long.MaxValue)
             {
-                return false;
+                throw new EncodingException();
             }
 
-            if (tokenLength > long.MaxValue)
-            {
-                return false;
-            }
-
-            value = (long)tokenLength;
-
-            return true;
+            return (long)value;
         }
 
-        public static bool TryDecode(ReadOnlySpan<byte> bytes, out ulong value, out int decodedLength)
+        public static ulong Decode(ReadOnlySpan<byte> bytes, out int decodedLength)
         {
-            value = 0;
             decodedLength = 0;
 
-            if(bytes.IsEmpty)
+            if (bytes.IsEmpty)
             {
-                return false;
+                throw new EncodingException();
             }
 
             var length = (int)Math.Pow(2, bytes[0] >> 6);
 
-            if(bytes.Length < length)
+            if (bytes.Length < length)
             {
-                return false;
+                throw new EncodingException();
             }
 
             var bytesToDecode = bytes.Slice(0, length);
 
             long decodedValue = 0;
 
-            switch(bytesToDecode.Length)
+            switch (length)
             {
-                case 1: decodedValue = bytesToDecode[0] & (byte.MaxValue >> 2);
+                case 1:
+                    decodedValue = bytesToDecode[0] & (byte.MaxValue >> 2);
                     break;
-                case 2: decodedValue = NetworkBitConverter.ToInt16(bytesToDecode) & (short.MaxValue >> 2);
+                case 2:
+                    decodedValue = NetworkBitConverter.ToInt16(bytesToDecode) & (short.MaxValue >> 2);
                     break;
-                case 4: decodedValue = NetworkBitConverter.ToInt32(bytesToDecode) & (int.MaxValue >> 2);
+                case 4:
+                    decodedValue = NetworkBitConverter.ToInt32(bytesToDecode) & (int.MaxValue >> 2);
                     break;
-                case 8: decodedValue = NetworkBitConverter.ToInt64(bytesToDecode) & (long.MaxValue >> 2);
+                case 8:
+                    decodedValue = NetworkBitConverter.ToInt64(bytesToDecode) & (long.MaxValue >> 2);
                     break;
             }
 
-            value = unchecked((ulong)decodedValue);
-            decodedLength = bytesToDecode.Length;
+            decodedLength = length;
 
-            return true;
+            return unchecked((ulong)decodedValue);
         }
     }
 }

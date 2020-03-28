@@ -20,25 +20,15 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             result = new StopSendingFrame();
             remainings = ReadOnlyMemory<byte>.Empty;
 
-            if (!FrameType.TryParseFrameType(bytes, out var type, out var afterTypeRemainings))
-            {
-                return false;
-            }
+            var type = FrameType.Parse(bytes, out var afterTypeRemainings);
 
             if (!type.IsStopSending())
             {
                 return false;
             }
 
-            if (!StreamId.TryParse(afterTypeRemainings, out var streamId, out var afterStreamIdBytes))
-            {
-                return false;
-            }
-
-            if (!ApplicationError.TryParse(afterStreamIdBytes, out var applicationError, out var afterApplicationErrorBytes))
-            {
-                return false;
-            }
+            var streamId = StreamId.Parse(afterTypeRemainings, out var afterStreamIdBytes);
+            var applicationError = ApplicationError.Parse(afterStreamIdBytes, out var afterApplicationErrorBytes);
 
             result = new StopSendingFrame(streamId, applicationError);
             remainings = afterApplicationErrorBytes;

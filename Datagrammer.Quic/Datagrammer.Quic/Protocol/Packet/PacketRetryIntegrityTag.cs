@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
@@ -36,23 +37,21 @@ namespace Datagrammer.Quic.Protocol.Packet
             return !first.Equals(second);
         }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out PacketRetryIntegrityTag result, out ReadOnlyMemory<byte> bytesBefore)
+        public static PacketRetryIntegrityTag Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> bytesBefore)
         {
-            result = new PacketRetryIntegrityTag();
             bytesBefore = ReadOnlyMemory<byte>.Empty;
 
             if (bytes.Length < 16)
             {
-                return false;
+                throw new EncodingException();
             }
             
             var tagBytes = bytes.Slice(bytes.Length - 16, 16);
             var tagValue = new Guid(tagBytes.Span);
 
-            result = new PacketRetryIntegrityTag(tagValue);
             bytesBefore = bytes.Slice(0, bytes.Length - 16);
 
-            return true;
+            return new PacketRetryIntegrityTag(tagValue);
         }
     }
 }

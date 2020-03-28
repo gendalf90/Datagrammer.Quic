@@ -36,20 +36,13 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             return !first.Equals(second);
         }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out StreamId streamId, out ReadOnlyMemory<byte> remainings)
+        public static StreamId Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            streamId = new StreamId();
-            remainings = ReadOnlyMemory<byte>.Empty;
+            var id = VariableLengthEncoding.Decode(bytes.Span, out var decodedLength);
 
-            if (!VariableLengthEncoding.TryDecode(bytes.Span, out var id, out var decodedLength))
-            {
-                return false;
-            }
-
-            streamId = new StreamId(id);
             remainings = bytes.Slice(decodedLength);
 
-            return true;
+            return new StreamId(id);
         }
     }
 }

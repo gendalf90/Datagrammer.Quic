@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
@@ -36,29 +37,23 @@ namespace Datagrammer.Quic.Protocol.Packet
             return !first.Equals(second);
         }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out PacketToken result, out ReadOnlyMemory<byte> remainings)
+        public static PacketToken Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            result = new PacketToken();
             remainings = ReadOnlyMemory<byte>.Empty;
 
-            if (!VariableLengthEncoding.TryDecode32(bytes.Span, out var tokenLength, out var decodedBytesLength))
-            {
-                return false;
-            }
-
+            var tokenLength = VariableLengthEncoding.Decode32(bytes.Span, out var decodedBytesLength);
             var afterLengthBytes = bytes.Slice(decodedBytesLength);
 
             if (afterLengthBytes.Length < tokenLength)
             {
-                return false;
+                throw new EncodingException();
             }
 
             var tokenBytes = afterLengthBytes.Slice(0, tokenLength);
 
-            result = new PacketToken(tokenBytes);
             remainings = afterLengthBytes.Slice(tokenLength);
 
-            return true;
+            return new PacketToken(tokenBytes);
         }
     }
 }

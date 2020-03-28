@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet.Frame
 {
@@ -27,12 +28,26 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
         {
             ClearCurrentRange();
 
-            if (NeedReadFirstRange())
+            if(IsEmpty())
             {
-                return TryReadFirstRange();
+                return false;
             }
 
-            return TryReadRange();
+            if (NeedReadFirstRange())
+            {
+                ReadFirstRange();
+            }
+            else
+            {
+                ReadRange();
+            }
+
+            return true;
+        }
+
+        private bool IsEmpty()
+        {
+            return remainings.IsEmpty;
         }
 
         private void ClearCurrentRange()
@@ -45,51 +60,37 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             return !isFirstRangeRead;
         }
 
-        private bool TryReadFirstRange()
+        private void ReadFirstRange()
         {
-            if(!VariableLengthEncoding.TryDecode(remainings.Span, out var firstRangeValue, out var decodedLength))
-            {
-                return false;
-            }
+            var firstRangeValue = VariableLengthEncoding.Decode(remainings.Span, out var decodedLength);
 
             currentSmallest = new PacketNumber(largestAcknowledged.Number - firstRangeValue);
             currentRange = new AckRange(currentSmallest, largestAcknowledged);
             remainings = remainings.Slice(decodedLength);
             isFirstRangeRead = true;
-
-            return true;
         }
 
-        private bool TryReadRange()
+        private void ReadRange()
         {
-            if (!VariableLengthEncoding.TryDecode(remainings.Span, out var gapValue, out var decodedLength))
-            {
-                return false;
-            }
+            var gapValue = VariableLengthEncoding.Decode(remainings.Span, out var decodedLength);
 
-            if(gapValue + 2 > currentSmallest.Number)
+            if (gapValue + 2 > currentSmallest.Number)
             {
-                return false;
+                throw new EncodingException();
             }
 
             var currentLargest = new PacketNumber(currentSmallest.Number - gapValue - 2);
             var afterGapRemainings = remainings.Slice(decodedLength);
-
-            if (!VariableLengthEncoding.TryDecode(afterGapRemainings.Span, out var rangeValue, out decodedLength))
-            {
-                return false;
-            }
+            var rangeValue = VariableLengthEncoding.Decode(afterGapRemainings.Span, out decodedLength);
 
             if(rangeValue > currentLargest.Number)
             {
-                return false;
+                throw new EncodingException();
             }
 
             currentSmallest = new PacketNumber(currentLargest.Number - rangeValue);
             currentRange = new AckRange(currentSmallest, currentLargest);
             remainings = afterGapRemainings.Slice(decodedLength);
-
-            return true;
         }
     }
 }

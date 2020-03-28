@@ -17,36 +17,20 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 
         public ulong Ce { get; }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out EcnCounts result, out ReadOnlyMemory<byte> remainings)
+        public static EcnCounts Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            result = new EcnCounts();
             remainings = ReadOnlyMemory<byte>.Empty;
 
-            if(!VariableLengthEncoding.TryDecode(bytes.Span, out var ect0, out int decodedLength))
-            {
-                return false;
-            }
-
+            var ect0 = VariableLengthEncoding.Decode(bytes.Span, out int decodedLength);
             var afterEct0Bytes = bytes.Slice(decodedLength);
-
-            if (!VariableLengthEncoding.TryDecode(afterEct0Bytes.Span, out var ect1, out decodedLength))
-            {
-                return false;
-            }
-
+            var ect1 = VariableLengthEncoding.Decode(afterEct0Bytes.Span, out decodedLength);
             var afterEct1Bytes = afterEct0Bytes.Slice(decodedLength);
-
-            if (!VariableLengthEncoding.TryDecode(afterEct1Bytes.Span, out var ce, out decodedLength))
-            {
-                return false;
-            }
-
+            var ce = VariableLengthEncoding.Decode(afterEct1Bytes.Span, out decodedLength);
             var afterCeBytes = afterEct1Bytes.Slice(decodedLength);
 
-            result = new EcnCounts(ect0, ect1, ce);
             remainings = afterCeBytes;
 
-            return true;
+            return new EcnCounts(ect0, ect1, ce);
         }
     }
 }

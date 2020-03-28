@@ -1,30 +1,25 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
     public static class PacketLength
     {
-        public static bool CheckPacketLength(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> packetRemainingBytes, out ReadOnlyMemory<byte> afterPacketRemainings)
+        public static void CheckPacketLength(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> packetBytes, out ReadOnlyMemory<byte> afterPacketBytes)
         {
-            packetRemainingBytes = ReadOnlyMemory<byte>.Empty;
-            afterPacketRemainings = ReadOnlyMemory<byte>.Empty;
+            packetBytes = ReadOnlyMemory<byte>.Empty;
+            afterPacketBytes = ReadOnlyMemory<byte>.Empty;
 
-            if (!VariableLengthEncoding.TryDecode32(bytes.Span, out var length, out var decodedBytesLength))
-            {
-                return false;
-            }
-
+            var length = VariableLengthEncoding.Decode32(bytes.Span, out var decodedBytesLength);
             var afterLengthBytes = bytes.Slice(decodedBytesLength);
 
             if(afterLengthBytes.Length < length)
             {
-                return false;
+                throw new EncodingException();
             }
 
-            packetRemainingBytes = afterLengthBytes.Slice(0, length);
-            afterPacketRemainings = afterLengthBytes.Slice(length);
-
-            return true;
+            packetBytes = afterLengthBytes.Slice(0, length);
+            afterPacketBytes = afterLengthBytes.Slice(length);
         }
     }
 }

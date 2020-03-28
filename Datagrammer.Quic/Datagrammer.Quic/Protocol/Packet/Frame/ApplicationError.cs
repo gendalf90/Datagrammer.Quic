@@ -11,20 +11,13 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             this.value = value;
         }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out ApplicationError error, out ReadOnlyMemory<byte> remainings)
+        public static ApplicationError Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            error = new ApplicationError();
-            remainings = ReadOnlyMemory<byte>.Empty;
+            var id = VariableLengthEncoding.Decode(bytes.Span, out var decodedLength);
 
-            if (!VariableLengthEncoding.TryDecode(bytes.Span, out var id, out var decodedLength))
-            {
-                return false;
-            }
-
-            error = new ApplicationError(id);
             remainings = bytes.Slice(decodedLength);
 
-            return true;
+            return new ApplicationError(id);
         }
     }
 }

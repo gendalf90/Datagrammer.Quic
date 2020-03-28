@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet.Frame
 {
@@ -28,31 +29,16 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             result = new StreamFrame();
             remainings = ReadOnlyMemory<byte>.Empty;
 
-            if (!FrameType.TryParseFrameType(bytes, out var type, out var afterTypeBytes))
-            {
-                return false;
-            }
+            var type = FrameType.Parse(bytes, out var afterTypeBytes);
 
             if (!type.IsStream())
             {
                 return false;
             }
 
-            if(!StreamId.TryParse(afterTypeBytes, out var streamId, out var afterStreamIdBytes))
-            {
-                return false;
-            }
-
-            if(!TryParseOffset(afterStreamIdBytes, type, out var offset, out var afterOffsetBytes))
-            {
-                return false;
-            }
-
-            if (!TryParseData(afterOffsetBytes, type, out var data, out var afterDataBytes))
-            {
-                return false;
-            }
-
+            var streamId = StreamId.Parse(afterTypeBytes, out var afterStreamIdBytes);
+            var offset = ParseOffset(afterStreamIdBytes, type, out var afterOffsetBytes);
+            var data = ParseData(afterOffsetBytes, type, out var afterDataBytes);
             var isFinal = type.HasFinal();
 
             result = new StreamFrame(streamId, offset, isFinal, data);
@@ -61,52 +47,42 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             return true;
         }
 
-        private static bool TryParseOffset(ReadOnlyMemory<byte> bytes, FrameType type, out int value, out ReadOnlyMemory<byte> remainings)
+        private static int ParseOffset(ReadOnlyMemory<byte> bytes, FrameType type,  out ReadOnlyMemory<byte> remainings)
         {
-            value = 0;
             remainings = bytes;
 
             if(!type.HasOffset())
             {
-                return true;
+                return 0;
             }
 
-            if(!VariableLengthEncoding.TryDecode32(bytes.Span, out value, out var decodedLength))
-            {
-                return false;
-            }
+            var offset = VariableLengthEncoding.Decode32(bytes.Span, out var decodedLength);
 
             remainings = bytes.Slice(decodedLength);
 
-            return true;
+            return offset;
         }
 
-        private static bool TryParseData(ReadOnlyMemory<byte> bytes, FrameType type, out ReadOnlyMemory<byte> data, out ReadOnlyMemory<byte> remainings)
+        private static ReadOnlyMemory<byte> ParseData(ReadOnlyMemory<byte> bytes, FrameType type, out ReadOnlyMemory<byte> remainings)
         {
-            data = bytes;
             remainings = ReadOnlyMemory<byte>.Empty;
 
             if (!type.HasLength())
             {
-                return true;
+                return bytes;
             }
 
-            if (!VariableLengthEncoding.TryDecode32(bytes.Span, out var length, out var decodedLength))
-            {
-                return false;
-            }
-
+            var length = VariableLengthEncoding.Decode32(bytes.Span, out var decodedLength);
             var afterLengthBytes = bytes.Slice(decodedLength);
 
             if(afterLengthBytes.Length < length)
             {
-                return false;
+                throw new EncodingException();
             }
 
-            data = afterLengthBytes.Slice(0, length);
             remainings = afterLengthBytes.Slice(length);
 
-            return true;
+            return afterLengthBytes.Slice(0, length);
         }
     }
 }

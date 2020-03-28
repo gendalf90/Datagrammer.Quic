@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet.Frame
 {
@@ -35,35 +36,48 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 
         public bool HasFinal() => Convert.ToBoolean(type & 1);
 
-        public static bool TryParseFrameType(ReadOnlyMemory<byte> bytes, out FrameType type, out ReadOnlyMemory<byte> remainings)
+        public bool IsMaxData() => type == 16;
+
+        public bool IsMaxStreamData() => type == 17;
+
+        public bool IsMaxStreams() => type == 18 || type == 19;
+
+        public bool ForBidirectional() => type == 18 || type == 22;
+
+        public bool ForUnidirectional() => type == 19 || type == 23;
+
+        public bool IsDataBlocked() => type == 20;
+
+        public bool IsStreamDataBlocked() => type == 21;
+
+        public bool IsStreamsBlocked() => type == 22 || type == 23;
+
+        public bool IsNewConnectionId() => type == 24;
+
+        public static FrameType Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            type = new FrameType();
             remainings = ReadOnlyMemory<byte>.Empty;
 
-            if(!VariableLengthEncoding.TryDecode(bytes.Span, out var code, out var decodedLength))
-            {
-                return false;
-            }
+            var code = VariableLengthEncoding.Decode(bytes.Span, out var decodedLength);
 
-            if(code <= byte.MaxValue && decodedLength > 1)
+            if (code <= byte.MaxValue && decodedLength > 1)
             {
-                return false;
+                throw new EncodingException();
             }
 
             if (code <= ushort.MaxValue && decodedLength > 2)
             {
-                return false;
+                throw new EncodingException();
             }
 
             if (code <= uint.MaxValue && decodedLength > 4)
             {
-                return false;
+                throw new EncodingException();
             }
 
-            type = new FrameType(code);
             remainings = bytes.Slice(decodedLength);
 
-            return true;
+            return new FrameType(code);
         }
     }
 }
