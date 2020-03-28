@@ -24,7 +24,7 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 
         public PacketToken ResetToken { get; }
 
-        private static bool TryParse(ReadOnlyMemory<byte> bytes, out NewConnectionIdFrame result, out ReadOnlyMemory<byte> remainings)
+        public static bool TryParse(ReadOnlyMemory<byte> bytes, out NewConnectionIdFrame result, out ReadOnlyMemory<byte> remainings)
         {
             result = new NewConnectionIdFrame();
             remainings = ReadOnlyMemory<byte>.Empty;

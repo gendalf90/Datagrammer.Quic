@@ -54,6 +54,14 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 
         public bool IsNewConnectionId() => type == 24;
 
+        public bool IsRetireConnectionId() => type == 25;
+
+        public bool IsPath() => type == 26 || type == 27;
+
+        public bool IsChallenge() => type == 26;
+
+        public bool IsResponse() => type == 27;
+
         public static FrameType Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             remainings = ReadOnlyMemory<byte>.Empty;

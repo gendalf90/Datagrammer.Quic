@@ -47,7 +47,7 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             return true;
         }
 
-        private static int ParseOffset(ReadOnlyMemory<byte> bytes, FrameType type,  out ReadOnlyMemory<byte> remainings)
+        private static int ParseOffset(ReadOnlyMemory<byte> bytes, FrameType type, out ReadOnlyMemory<byte> remainings)
         {
             remainings = bytes;
 
