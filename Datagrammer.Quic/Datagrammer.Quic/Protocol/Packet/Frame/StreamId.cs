@@ -11,6 +11,26 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             this.value = value;
         }
 
+        public bool IsClientInitiated()
+        {
+            return !IsServerInitiated();
+        }
+
+        public bool IsServerInitiated()
+        {
+            return Convert.ToBoolean(value & 1);
+        }
+
+        public bool IsBidirectional()
+        {
+            return !IsUnidirectional();
+        }
+
+        public bool IsUnidirectional()
+        {
+            return Convert.ToBoolean((value >> 1) & 1);
+        }
+
         public override bool Equals(object obj)
         {
             return obj is StreamId version && Equals(version);
