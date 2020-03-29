@@ -5,17 +5,17 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
     public readonly struct ResetStreamFrame
     {
         private ResetStreamFrame(StreamId streamId,
-                                 ApplicationError applicationError,
+                                 Error error,
                                  int finalSize)
         {
             StreamId = streamId;
-            ApplicationError = applicationError;
+            Error = error;
             FinalSize = finalSize;
         }
 
         public StreamId StreamId { get; }
 
-        public ApplicationError ApplicationError { get; }
+        public Error Error { get; }
 
         public int FinalSize { get; }
 
@@ -32,10 +32,10 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             }
 
             var streamId = StreamId.Parse(afterTypeRemainings, out var afterStreamIdBytes);
-            var applicationError = ApplicationError.Parse(afterStreamIdBytes, out var afterApplicationErrorBytes);
+            var error = Error.ParseApplication(afterStreamIdBytes, out var afterApplicationErrorBytes);
             var finalSize = VariableLengthEncoding.Decode32(afterApplicationErrorBytes.Span, out var decodedLength);
 
-            result = new ResetStreamFrame(streamId, applicationError, finalSize);
+            result = new ResetStreamFrame(streamId, error, finalSize);
             remainings = afterApplicationErrorBytes.Slice(decodedLength);
 
             return true;

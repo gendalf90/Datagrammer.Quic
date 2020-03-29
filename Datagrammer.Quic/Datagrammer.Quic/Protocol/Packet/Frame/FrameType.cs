@@ -62,6 +62,14 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 
         public bool IsResponse() => type == 27;
 
+        public bool IsConnectionClose() => type == 28 || type == 29;
+
+        public bool HasTransportError() => type == 28;
+
+        public bool HasApplicationError() => type == 29;
+
+        public bool IsHandshakeDone() => type == 30;
+
         public static FrameType Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             remainings = ReadOnlyMemory<byte>.Empty;

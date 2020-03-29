@@ -5,7 +5,7 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
     public readonly struct StopSendingFrame
     {
         private StopSendingFrame(StreamId streamId,
-                                 ApplicationError applicationError)
+                                 Error applicationError)
         {
             StreamId = streamId;
             ApplicationError = applicationError;
@@ -13,7 +13,7 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 
         public StreamId StreamId { get; }
 
-        public ApplicationError ApplicationError { get; }
+        public Error ApplicationError { get; }
 
         public static bool TryParse(ReadOnlyMemory<byte> bytes, out StopSendingFrame result, out ReadOnlyMemory<byte> remainings)
         {
@@ -28,7 +28,7 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             }
 
             var streamId = StreamId.Parse(afterTypeRemainings, out var afterStreamIdBytes);
-            var applicationError = ApplicationError.Parse(afterStreamIdBytes, out var afterApplicationErrorBytes);
+            var applicationError = Error.ParseApplication(afterStreamIdBytes, out var afterApplicationErrorBytes);
 
             result = new StopSendingFrame(streamId, applicationError);
             remainings = afterApplicationErrorBytes;
