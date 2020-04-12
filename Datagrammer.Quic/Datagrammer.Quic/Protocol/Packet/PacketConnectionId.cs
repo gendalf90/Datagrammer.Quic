@@ -41,8 +41,6 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public static PacketConnectionId Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            remainings = ReadOnlyMemory<byte>.Empty;
-
             if (bytes.IsEmpty)
             {
                 throw new EncodingException();
@@ -67,6 +65,11 @@ namespace Datagrammer.Quic.Protocol.Packet
             remainings = afterLengthBytes.Slice(length);
 
             return new PacketConnectionId(resultBytes);
+        }
+
+        public override string ToString()
+        {
+            return BitConverter.ToString(bytes.ToArray());
         }
     }
 }

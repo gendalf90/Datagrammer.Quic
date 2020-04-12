@@ -31,8 +31,6 @@ namespace Datagrammer.Quic.Protocol
 
         public static ulong Decode(ReadOnlySpan<byte> bytes, out int decodedLength)
         {
-            decodedLength = 0;
-
             if (bytes.IsEmpty)
             {
                 throw new EncodingException();
@@ -46,28 +44,27 @@ namespace Datagrammer.Quic.Protocol
             }
 
             var bytesToDecode = bytes.Slice(0, length);
+            var decodedValue = NetworkBitConverter.ParseUnaligned(bytesToDecode);
 
-            long decodedValue = 0;
-
-            switch (length)
+            switch (bytesToDecode.Length)
             {
                 case 1:
-                    decodedValue = bytesToDecode[0] & (byte.MaxValue >> 2);
+                    decodedValue &= byte.MaxValue >> 2;
                     break;
                 case 2:
-                    decodedValue = NetworkBitConverter.ToInt16(bytesToDecode) & (short.MaxValue >> 2);
+                    decodedValue &= ushort.MaxValue >> 2;
                     break;
                 case 4:
-                    decodedValue = NetworkBitConverter.ToInt32(bytesToDecode) & (int.MaxValue >> 2);
+                    decodedValue &= uint.MaxValue >> 2;
                     break;
                 case 8:
-                    decodedValue = NetworkBitConverter.ToInt64(bytesToDecode) & (long.MaxValue >> 2);
+                    decodedValue &= ulong.MaxValue >> 2;
                     break;
             }
 
-            decodedLength = length;
+            decodedLength = bytesToDecode.Length;
 
-            return unchecked((ulong)decodedValue);
+            return decodedValue;
         }
     }
 }

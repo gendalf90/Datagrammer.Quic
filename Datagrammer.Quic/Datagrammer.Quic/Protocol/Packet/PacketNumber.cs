@@ -3,14 +3,14 @@ using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
-    public readonly struct PacketNumber
+    public readonly struct PacketNumber : IComparable<PacketNumber>, IEquatable<PacketNumber>
     {
-        internal PacketNumber(ulong number)
-        {
-            Number = number;
-        }
+        private readonly ulong value;
 
-        public ulong Number { get; }
+        internal PacketNumber(ulong value)
+        {
+            this.value = value;
+        }
 
         public static PacketNumber Parse32(ReadOnlyMemory<byte> bytes)
         {
@@ -19,7 +19,7 @@ namespace Datagrammer.Quic.Protocol.Packet
                 throw new EncodingException();
             }
 
-            var value = NetworkBitConverter.ToUInt32(bytes.Span);
+            var value = NetworkBitConverter.ParseUnaligned(bytes.Span);
 
             return new PacketNumber(value);
         }
@@ -31,6 +31,46 @@ namespace Datagrammer.Quic.Protocol.Packet
             remainings = bytes.Slice(decodedLength);
 
             return new PacketNumber(value);
+        }
+
+        public PacketNumber GetNext()
+        {
+            return new PacketNumber(value + 1);
+        }
+
+        public bool Equals(PacketNumber other)
+        {
+            return value == other.value;
+        }
+
+        public int CompareTo(PacketNumber other)
+        {
+            return value.CompareTo(other.value);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is PacketNumber number && Equals(number);
+        }
+
+        public override int GetHashCode()
+        {
+            return value.GetHashCode();
+        }
+
+        public static bool operator ==(PacketNumber first, PacketNumber second)
+        {
+            return first.Equals(second);
+        }
+
+        public static bool operator !=(PacketNumber first, PacketNumber second)
+        {
+            return !first.Equals(second);
+        }
+
+        public override string ToString()
+        {
+            return value.ToString();
         }
     }
 }

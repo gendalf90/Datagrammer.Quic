@@ -4,18 +4,20 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 {
     public readonly struct AckRanges
     {
-        private readonly PacketNumber largestAcknowledged;
         private readonly ReadOnlyMemory<byte> bytes;
 
         internal AckRanges(PacketNumber largestAcknowledged, ReadOnlyMemory<byte> bytes)
         {
-            this.largestAcknowledged = largestAcknowledged;
+            LargestAcknowledged = largestAcknowledged;
+
             this.bytes = bytes;
         }
 
+        public PacketNumber LargestAcknowledged { get; }
+
         public AckRangeEnumerator GetEnumerator()
         {
-            return new AckRangeEnumerator(largestAcknowledged, bytes);
+            return new AckRangeEnumerator(bytes);
         }
     }
 }

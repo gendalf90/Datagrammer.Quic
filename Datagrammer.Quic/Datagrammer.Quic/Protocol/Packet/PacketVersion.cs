@@ -5,11 +5,20 @@ namespace Datagrammer.Quic.Protocol.Packet
 {
     public readonly struct PacketVersion : IEquatable<PacketVersion>
     {
-        private readonly int version;
+        private readonly byte first;
+        private readonly byte second;
+        private readonly byte third;
+        private readonly byte fourth;
 
-        private PacketVersion(int version)
+        private PacketVersion(byte first,
+                              byte second,
+                              byte third,
+                              byte fourth)
         {
-            this.version = version;
+            this.first = first;
+            this.second = second;
+            this.third = third;
+            this.fourth = fourth;
         }
 
         public override bool Equals(object obj)
@@ -19,12 +28,12 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public override int GetHashCode()
         {
-            return version;
+            return ToInt().GetHashCode();
         }
 
         public bool Equals(PacketVersion other)
         {
-            return version == other.version;
+            return ToInt() == other.ToInt();
         }
 
         public static bool operator ==(PacketVersion first, PacketVersion second)
@@ -37,21 +46,38 @@ namespace Datagrammer.Quic.Protocol.Packet
             return !first.Equals(second);
         }
 
+        private int ToInt()
+        {
+            return (first << 24) | (second << 16) | (third << 8) | fourth;
+        }
+
         public static PacketVersion Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            remainings = ReadOnlyMemory<byte>.Empty;
-
             if (bytes.Length < 4)
             {
                 throw new EncodingException();
             }
 
-            var versionBytes = bytes.Slice(0, 4);
-            var version = BitConverter.ToInt32(versionBytes.Span);
+            var bytesSpan = bytes.Span;
 
             remainings = bytes.Slice(4);
 
-            return new PacketVersion(version);
+            return new PacketVersion(bytesSpan[0], bytesSpan[1], bytesSpan[2], bytesSpan[3]);
+        }
+
+        public static PacketVersion CreateOne()
+        {
+            return new PacketVersion(0, 0, 0, 1);
+        }
+
+        public static PacketVersion CreateByDraft(byte draftNumber)
+        {
+            return new PacketVersion(byte.MaxValue, 0, 0, draftNumber);
+        }
+
+        public override string ToString()
+        {
+            return string.Format("{0:X2}-{1:X2}-{2:X2}-{3:X2}", first, second, third, fourth);
         }
     }
 }

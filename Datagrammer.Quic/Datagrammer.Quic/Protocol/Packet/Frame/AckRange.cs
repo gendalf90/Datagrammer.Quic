@@ -2,14 +2,19 @@
 {
     public readonly struct AckRange
     {
-        internal AckRange(PacketNumber start, PacketNumber end)
+        internal AckRange(bool isAck,
+                          bool isGap,
+                          ulong length)
         {
-            Start = start;
-            End = end;
+            IsAck = isAck;
+            IsGap = isGap;
+            Length = length;
         }
 
-        public PacketNumber Start { get; }
+        public bool IsAck { get; }
 
-        public PacketNumber End { get; }
+        public bool IsGap { get; }
+
+        public ulong Length { get; }
     }
 }
