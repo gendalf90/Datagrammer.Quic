@@ -31,7 +31,7 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
                 return false;
             }
 
-            var largestAcknowledgedPacketNumber = PacketNumber.Parse(afterTypeRemainings, out var afterLargestNumberBytes);
+            var largestAcknowledgedPacketNumber = PacketNumber.ParseVariable(afterTypeRemainings, out var afterLargestNumberBytes);
             var delay = AckDelay.Parse(afterLargestNumberBytes, out var afterDelayBytes);
             var rangesCount = VariableLengthEncoding.Decode32(afterDelayBytes.Span, out var rangesCountDecodedLength);
             var afterRangesCountBytes = afterDelayBytes.Slice(rangesCountDecodedLength);

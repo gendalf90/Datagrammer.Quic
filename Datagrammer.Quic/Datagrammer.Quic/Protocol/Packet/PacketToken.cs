@@ -7,7 +7,7 @@ namespace Datagrammer.Quic.Protocol.Packet
     {
         private readonly ReadOnlyMemory<byte> bytes;
 
-        internal PacketToken(ReadOnlyMemory<byte> bytes)
+        public PacketToken(ReadOnlyMemory<byte> bytes)
         {
             this.bytes = bytes;
         }
@@ -19,7 +19,7 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(bytes);
+            return HashCodeCalculator.Calculate(bytes.Span);
         }
 
         public bool Equals(PacketToken other)
@@ -36,6 +36,8 @@ namespace Datagrammer.Quic.Protocol.Packet
         {
             return !first.Equals(second);
         }
+
+        public static PacketToken Empty { get; } = new PacketToken();
 
         public static PacketToken Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
@@ -54,6 +56,16 @@ namespace Datagrammer.Quic.Protocol.Packet
             remainings = afterLengthBytes.Slice(tokenLength);
 
             return new PacketToken(tokenBytes);
+        }
+
+        public void WriteBytes(Span<byte> destination, out Span<byte> remainings)
+        {
+            if(!bytes.Span.TryCopyTo(destination))
+            {
+                throw new EncodingException();
+            }
+
+            remainings = destination.Slice(bytes.Length);
         }
     }
 }

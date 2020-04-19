@@ -7,9 +7,6 @@ namespace Datagrammer.Quic.Protocol.Packet
     {
         public static void CheckPacketLength(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> packetBytes, out ReadOnlyMemory<byte> afterPacketBytes)
         {
-            packetBytes = ReadOnlyMemory<byte>.Empty;
-            afterPacketBytes = ReadOnlyMemory<byte>.Empty;
-
             var length = VariableLengthEncoding.Decode32(bytes.Span, out var decodedBytesLength);
             var afterLengthBytes = bytes.Slice(decodedBytesLength);
 

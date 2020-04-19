@@ -7,11 +7,13 @@ namespace Datagrammer.Quic.Protocol.Packet
     {
         private const int MaxLength = 20;
 
-        private readonly ReadOnlyMemory<byte> bytes;
+        private readonly ReadOnlyMemory<byte> rawBytes;
+        private readonly Guid guid;
 
-        private PacketConnectionId(ReadOnlyMemory<byte> bytes)
+        private PacketConnectionId(ReadOnlyMemory<byte> rawBytes, Guid guid)
         {
-            this.bytes = bytes;
+            this.rawBytes = rawBytes;
+            this.guid = guid;
         }
 
         public override bool Equals(object obj)
@@ -21,13 +23,30 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(bytes);
+            if (IsGuid)
+            {
+                return guid.GetHashCode();
+            }
+
+            return HashCodeCalculator.Calculate(rawBytes.Span);
         }
 
         public bool Equals(PacketConnectionId other)
         {
-            return bytes.Span.SequenceEqual(other.bytes.Span);
+            if (other.IsGuid != IsGuid)
+            {
+                return false;
+            }
+
+            if (other.IsGuid && IsGuid)
+            {
+                return other.guid == guid;
+            }
+
+            return rawBytes.Span.SequenceEqual(other.rawBytes.Span);
         }
+
+        private bool IsGuid => guid != Guid.Empty;
 
         public static bool operator ==(PacketConnectionId first, PacketConnectionId second)
         {
@@ -39,6 +58,8 @@ namespace Datagrammer.Quic.Protocol.Packet
             return !first.Equals(second);
         }
 
+        public static PacketConnectionId Empty { get; } = new PacketConnectionId();
+
         public static PacketConnectionId Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             if (bytes.IsEmpty)
@@ -48,7 +69,7 @@ namespace Datagrammer.Quic.Protocol.Packet
 
             var length = bytes.Span[0];
 
-            if(length > MaxLength)
+            if (length > MaxLength)
             {
                 throw new EncodingException();
             }
@@ -61,15 +82,45 @@ namespace Datagrammer.Quic.Protocol.Packet
             }
 
             var resultBytes = afterLengthBytes.Slice(0, length);
+            var resultGuid = length == 16 ? new Guid(resultBytes.Span) : Guid.Empty;
 
             remainings = afterLengthBytes.Slice(length);
 
-            return new PacketConnectionId(resultBytes);
+            return new PacketConnectionId(resultBytes, resultGuid);
+        }
+
+        public static PacketConnectionId Generate()
+        {
+            return new PacketConnectionId(ReadOnlyMemory<byte>.Empty, Guid.NewGuid());
+        }
+
+        public void WriteBytes(Span<byte> destination, out Span<byte> remainings)
+        {
+            if(destination.IsEmpty)
+            {
+                throw new EncodingException();
+            }
+
+            var lengthOfValue = IsGuid ? 16 : rawBytes.Length;
+            var destinationOfValue = destination.Slice(1);
+            var isWritingSuccess = IsGuid 
+                ? guid.TryWriteBytes(destinationOfValue) 
+                : rawBytes.Span.TryCopyTo(destinationOfValue);
+
+            if(!isWritingSuccess)
+            {
+                throw new EncodingException();
+            }
+
+            destination[0] = (byte)lengthOfValue;
+            remainings = destinationOfValue.Slice(lengthOfValue);
         }
 
         public override string ToString()
         {
-            return BitConverter.ToString(bytes.ToArray());
+            var bytes = IsGuid ? guid.ToByteArray() : rawBytes.ToArray();
+
+            return BitConverter.ToString(bytes);
         }
     }
 }

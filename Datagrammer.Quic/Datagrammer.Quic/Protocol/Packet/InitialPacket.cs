@@ -4,12 +4,12 @@ namespace Datagrammer.Quic.Protocol.Packet
 {
     public readonly struct InitialPacket
     {
-        private InitialPacket(PacketVersion version,
-                              PacketConnectionId destinationConnectionId,
-                              PacketConnectionId sourceConnectionId,
-                              PacketToken token,
-                              PacketNumber number,
-                              ReadOnlyMemory<byte> payload)
+        public InitialPacket(PacketVersion version,
+                             PacketConnectionId destinationConnectionId,
+                             PacketConnectionId sourceConnectionId,
+                             PacketToken token,
+                             PacketNumber number,
+                             ReadOnlyMemory<byte> payload)
         {
             Version = version;
             DestinationConnectionId = destinationConnectionId;
@@ -34,7 +34,7 @@ namespace Datagrammer.Quic.Protocol.Packet
         public static bool TryParse(ReadOnlyMemory<byte> bytes, out InitialPacket result, out ReadOnlyMemory<byte> remainings)
         {
             result = new InitialPacket();
-            remainings = ReadOnlyMemory<byte>.Empty;
+            remainings = bytes;
 
             var firstByte = PacketFirstByte.Parse(bytes, out var afterFirstByteBytes);
 

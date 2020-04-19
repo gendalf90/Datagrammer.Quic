@@ -39,25 +39,20 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public PacketNumber ParseNumber(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            remainings = bytes;
-
             if (bytes.Length < numberLength)
             {
                 throw new EncodingException();
             }
 
             var packetNumberBytes = bytes.Slice(0, numberLength);
-            var packetNumber = PacketNumber.Parse32(packetNumberBytes);
 
             remainings = bytes.Slice(numberLength);
 
-            return packetNumber;
+            return PacketNumber.Parse32(packetNumberBytes);
         }
 
         public static PacketFirstByte Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            remainings = ReadOnlyMemory<byte>.Empty;
-
             if(bytes.IsEmpty)
             {
                 throw new EncodingException();

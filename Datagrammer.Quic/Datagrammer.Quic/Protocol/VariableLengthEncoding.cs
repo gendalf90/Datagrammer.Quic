@@ -46,25 +46,43 @@ namespace Datagrammer.Quic.Protocol
             var bytesToDecode = bytes.Slice(0, length);
             var decodedValue = NetworkBitConverter.ParseUnaligned(bytesToDecode);
 
-            switch (bytesToDecode.Length)
-            {
-                case 1:
-                    decodedValue &= byte.MaxValue >> 2;
-                    break;
-                case 2:
-                    decodedValue &= ushort.MaxValue >> 2;
-                    break;
-                case 4:
-                    decodedValue &= uint.MaxValue >> 2;
-                    break;
-                case 8:
-                    decodedValue &= ulong.MaxValue >> 2;
-                    break;
-            }
-
-            decodedLength = bytesToDecode.Length;
+            decodedValue &= ulong.MaxValue >> (64 - length * 8 + 2);
+            decodedLength = length;
 
             return decodedValue;
+        }
+
+        public static void Encode(Span<byte> destination, ulong value, out int encodedLength)
+        {
+            if(value > ulong.MaxValue >> 2)
+            {
+                throw new EncodingException();
+            }
+
+            var length = 8;
+
+            if(value <= byte.MaxValue >> 2)
+            {
+                length = 1;
+            }
+            else if(value <= ushort.MaxValue >> 2)
+            {
+                length = 2;
+            }
+            else if(value <= uint.MaxValue >> 2)
+            {
+                length = 4;
+            }
+
+            if(destination.Length < length)
+            {
+                throw new EncodingException();
+            }
+
+            var encodedLengthValue = (ulong)Math.Log(length, 2);
+            var valueToEncode = value | encodedLengthValue << (length * 8 - 2);
+
+            encodedLength = NetworkBitConverter.WriteUnaligned(destination, valueToEncode);
         }
     }
 }

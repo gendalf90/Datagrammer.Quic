@@ -72,8 +72,6 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 
         public static FrameType Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            remainings = ReadOnlyMemory<byte>.Empty;
-
             var code = VariableLengthEncoding.Decode(bytes.Span, out var decodedLength);
 
             if (code <= byte.MaxValue && decodedLength > 1)

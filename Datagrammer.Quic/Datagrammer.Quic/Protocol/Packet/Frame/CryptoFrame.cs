@@ -5,8 +5,7 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 {
     public readonly struct CryptoFrame
     {
-        public CryptoFrame(int offset,
-                           ReadOnlyMemory<byte> data)
+        internal CryptoFrame(int offset, ReadOnlyMemory<byte> data)
         {
             Offset = offset;
             Data = data;
@@ -19,7 +18,7 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
         public static bool TryParse(ReadOnlyMemory<byte> bytes, out CryptoFrame result, out ReadOnlyMemory<byte> remainings)
         {
             result = new CryptoFrame();
-            remainings = ReadOnlyMemory<byte>.Empty;
+            remainings = bytes;
 
             var type = FrameType.Parse(bytes, out var afterTypeRemainings);
 

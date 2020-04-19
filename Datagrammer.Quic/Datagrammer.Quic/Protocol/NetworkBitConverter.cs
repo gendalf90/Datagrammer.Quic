@@ -15,10 +15,46 @@ namespace Datagrammer.Quic.Protocol
 
             for (int i = bytes.Length - 1, j = 0; i >= 0; i--, j++)
             {
-                result |= (ulong)bytes[BitConverter.IsLittleEndian ? j : i] << (8 * i);
+                result |= (ulong)bytes[j] << (8 * i);
             }
 
             return result;
+        }
+
+        public static int WriteUnaligned(Span<byte> destination, ulong value)
+        {
+            var length = 0;
+
+            for(ulong i = value; i > 0; i >>= 8)
+            {
+                length++;
+            }
+
+            length = length == 0 ? 1 : length;
+
+            if(destination.Length < length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(destination));
+            }
+
+            for(int i = 0, j = length - 1; i < length; i++, j--)
+            {
+                destination[i] = (byte)(value >> (j * 8) & byte.MaxValue);
+            }
+
+            return length;
+        }
+
+        public static int GetBitLength(ulong value)
+        {
+            var length = 0;
+
+            for (ulong i = value; i > 0; i >>= 1)
+            {
+                length++;
+            }
+
+            return length;
         }
     }
 }
