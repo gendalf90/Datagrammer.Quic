@@ -36,12 +36,12 @@ namespace Datagrammer.Quic.Protocol.Packet
             result = new InitialPacket();
             remainings = bytes;
 
-            var firstByte = PacketFirstByte.Parse(bytes, out var afterFirstByteBytes);
-
-            if(firstByte.IsShortHeader())
+            if(bytes.IsEmpty)
             {
                 return false;
             }
+
+            var firstByte = PacketFirstByte.Parse(bytes, out var afterFirstByteBytes);
 
             if(!firstByte.IsInitialType())
             {
@@ -52,10 +52,9 @@ namespace Datagrammer.Quic.Protocol.Packet
             var destinationConnectionId = PacketConnectionId.Parse(afterVersionBytes, out var afterDestinationConnectionIdBytes);
             var sourceConnectionId = PacketConnectionId.Parse(afterDestinationConnectionIdBytes, out var afterSourceConnectionIdBytes);
             var token = PacketToken.Parse(afterSourceConnectionIdBytes, out var afterTokenBytes);
-
-            PacketLength.CheckPacketLength(afterTokenBytes, out var packetBytes, out var afterPacketBytes);
-
-            var number = firstByte.ParseNumber(packetBytes, out var afterPacketNumberRemainings);
+            var packetBytes = PacketLength.SlicePacketBytes(afterTokenBytes, out var afterPacketBytes);
+            var packetNumberBytes = firstByte.SlicePacketNumberBytes(packetBytes, out var afterPacketNumberBytes);
+            var number = PacketNumber.Parse(packetNumberBytes);
 
             remainings = afterPacketBytes;
             result = new InitialPacket(version,
@@ -63,9 +62,25 @@ namespace Datagrammer.Quic.Protocol.Packet
                                        sourceConnectionId,
                                        token,
                                        number,
-                                       afterPacketNumberRemainings);
+                                       afterPacketNumberBytes);
 
             return true;
+        }
+
+        public void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
+        {
+            remainings = bytes;
+
+            new PacketFirstByte()
+                .SetInitial()
+                .SetPacketNumber(Number)
+                .WriteBytes(remainings, out remainings);
+
+            Version.WriteBytes(remainings, out remainings);
+            DestinationConnectionId.WriteBytes(remainings, out remainings);
+            SourceConnectionId.WriteBytes(remainings, out remainings);
+            Token.WriteBytes(remainings, out remainings);
+            PacketLength.WritePacketBytes(remainings, Number, Payload, out remainings);
         }
     }
 }

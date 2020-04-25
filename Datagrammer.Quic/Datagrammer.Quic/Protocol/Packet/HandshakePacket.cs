@@ -30,14 +30,14 @@ namespace Datagrammer.Quic.Protocol.Packet
         public static bool TryParse(ReadOnlyMemory<byte> bytes, out HandshakePacket result, out ReadOnlyMemory<byte> remainings)
         {
             result = new HandshakePacket();
-            remainings = ReadOnlyMemory<byte>.Empty;
+            remainings = bytes;
 
-            var firstByte = PacketFirstByte.Parse(bytes, out var afterFirstByteBytes);
-
-            if (firstByte.IsShortHeader())
+            if (bytes.IsEmpty)
             {
                 return false;
             }
+
+            var firstByte = PacketFirstByte.Parse(bytes, out var afterFirstByteBytes);
 
             if (!firstByte.IsHandshakeType())
             {
@@ -47,17 +47,16 @@ namespace Datagrammer.Quic.Protocol.Packet
             var version = PacketVersion.Parse(afterFirstByteBytes, out var afterVersionBytes);
             var destinationConnectionId = PacketConnectionId.Parse(afterVersionBytes, out var afterDestinationConnectionIdBytes);
             var sourceConnectionId = PacketConnectionId.Parse(afterDestinationConnectionIdBytes, out var afterSourceConnectionIdBytes);
-
-            PacketLength.CheckPacketLength(afterSourceConnectionIdBytes, out var packetBytes, out var afterPacketBytes);
-
-            var number = firstByte.ParseNumber(packetBytes, out var afterPacketNumberRemainings);
+            var packetBytes = PacketLength.SlicePacketBytes(afterSourceConnectionIdBytes, out var afterPacketBytes);
+            var packetNumberBytes = firstByte.SlicePacketNumberBytes(packetBytes, out var afterPacketNumberBytes);
+            var number = PacketNumber.Parse(packetNumberBytes);
 
             remainings = afterPacketBytes;
             result = new HandshakePacket(version,
                                          destinationConnectionId,
                                          sourceConnectionId,
                                          number,
-                                         afterPacketNumberRemainings);
+                                         afterPacketNumberBytes);
 
             return true;
         }

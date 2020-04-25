@@ -23,14 +23,7 @@ namespace Datagrammer.Quic.Protocol
 
         public static int WriteUnaligned(Span<byte> destination, ulong value)
         {
-            var length = 0;
-
-            for(ulong i = value; i > 0; i >>= 8)
-            {
-                length++;
-            }
-
-            length = length == 0 ? 1 : length;
+            var length = GetByteLength(value);
 
             if(destination.Length < length)
             {
@@ -43,6 +36,18 @@ namespace Datagrammer.Quic.Protocol
             }
 
             return length;
+        }
+
+        public static int GetByteLength(ulong value)
+        {
+            var length = 0;
+
+            for (ulong i = value; i > 0; i >>= 8)
+            {
+                length++;
+            }
+
+            return length == 0 ? 1 : length;
         }
 
         public static int GetBitLength(ulong value)

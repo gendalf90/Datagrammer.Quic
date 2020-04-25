@@ -31,12 +31,12 @@ namespace Datagrammer.Quic.Protocol.Packet
         {
             result = new RetryPacket();
 
-            var firstByte = PacketFirstByte.Parse(bytes, out var afterFirstByteBytes);
-
-            if (firstByte.IsShortHeader())
+            if (bytes.IsEmpty)
             {
                 return false;
             }
+
+            var firstByte = PacketFirstByte.Parse(bytes, out var afterFirstByteBytes);
 
             if (!firstByte.IsRetryType())
             {

@@ -1,5 +1,4 @@
-﻿using Datagrammer.Quic.Protocol.Error;
-using System;
+﻿using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
@@ -12,13 +11,8 @@ namespace Datagrammer.Quic.Protocol.Packet
             this.value = value;
         }
 
-        public static PacketNumber Parse32(ReadOnlyMemory<byte> bytes)
+        public static PacketNumber Parse(ReadOnlyMemory<byte> bytes)
         {
-            if (bytes.IsEmpty || bytes.Length > 4)
-            {
-                throw new EncodingException();
-            }
-
             var value = NetworkBitConverter.ParseUnaligned(bytes.Span);
 
             return new PacketNumber(value);
@@ -33,14 +27,19 @@ namespace Datagrammer.Quic.Protocol.Packet
             return new PacketNumber(value);
         }
 
-        public int Write32(Span<byte> destination, out Span<byte> remainings)
+        public void Write(Span<byte> destination, out Span<byte> remainings)
         {
             var valueToWrite = value & uint.MaxValue;
             var writtenLength = NetworkBitConverter.WriteUnaligned(destination, valueToWrite);
 
             remainings = destination.Slice(writtenLength);
+        }
 
-            return writtenLength;
+        public int GetLength()
+        {
+            var valueToWrite = value & uint.MaxValue;
+
+            return NetworkBitConverter.GetByteLength(valueToWrite);
         }
 
         public void WriteVariable(Span<byte> destination, out Span<byte> remainings)
