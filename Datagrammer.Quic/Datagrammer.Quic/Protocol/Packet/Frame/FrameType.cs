@@ -74,24 +74,20 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
         {
             var code = VariableLengthEncoding.Decode(bytes.Span, out var decodedLength);
 
-            if (code <= byte.MaxValue && decodedLength > 1)
-            {
-                throw new EncodingException();
-            }
-
-            if (code <= ushort.MaxValue && decodedLength > 2)
-            {
-                throw new EncodingException();
-            }
-
-            if (code <= uint.MaxValue && decodedLength > 4)
-            {
-                throw new EncodingException();
-            }
-
             remainings = bytes.Slice(decodedLength);
 
             return new FrameType(code);
         }
+
+        public void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
+        {
+            VariableLengthEncoding.Encode(bytes, type, out var encodedLength);
+
+            remainings = bytes.Slice(encodedLength);
+        }
+
+        public static FrameType CreatePadding() => new FrameType(0);
+
+        public static FrameType CreateCrypto() => new FrameType(6);
     }
 }

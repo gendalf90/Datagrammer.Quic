@@ -23,7 +23,7 @@ namespace Datagrammer.Quic.Protocol.Packet
         public static void WritePacketBytes(Span<byte> bytes, PacketNumber packetNumber, ReadOnlyMemory<byte> payload, out Span<byte> remainings)
         {
             var length = packetNumber.GetLength() + payload.Length;
-
+            
             VariableLengthEncoding.Encode(bytes, (ulong)length, out var encodedLength);
 
             var afterLengthBytes = bytes.Slice(encodedLength);

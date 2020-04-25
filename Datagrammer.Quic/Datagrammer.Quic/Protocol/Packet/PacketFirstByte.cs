@@ -128,27 +128,27 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public PacketFirstByte SetShort()
         {
-            return new PacketFirstByte(true, false, false, false, false, numberLength);
+            return new PacketFirstByte(false, false, false, false, false, numberLength);
         }
 
         public PacketFirstByte SetInitial()
         {
-            return new PacketFirstByte(false, true, false, false, false, numberLength);
+            return new PacketFirstByte(true, true, false, false, false, numberLength);
         }
 
         public PacketFirstByte SetRtt()
         {
-            return new PacketFirstByte(false, false, true, false, false, numberLength);
+            return new PacketFirstByte(true, false, true, false, false, numberLength);
         }
 
         public PacketFirstByte SetHandshake()
         {
-            return new PacketFirstByte(false, false, false, true, false, numberLength);
+            return new PacketFirstByte(true, false, false, true, false, numberLength);
         }
 
         public PacketFirstByte SetRetry()
         {
-            return new PacketFirstByte(false, false, false, false, true, numberLength);
+            return new PacketFirstByte(true, false, false, false, true, numberLength);
         }
     }
 }

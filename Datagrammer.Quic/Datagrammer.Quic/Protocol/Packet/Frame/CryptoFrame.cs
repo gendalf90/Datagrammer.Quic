@@ -5,8 +5,13 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 {
     public readonly struct CryptoFrame
     {
-        internal CryptoFrame(int offset, ReadOnlyMemory<byte> data)
+        public CryptoFrame(int offset, ReadOnlyMemory<byte> data)
         {
+            if(offset < 0)
+            {
+                throw new EncodingException();
+            }
+
             Offset = offset;
             Data = data;
         }
@@ -19,6 +24,11 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
         {
             result = new CryptoFrame();
             remainings = bytes;
+
+            if(bytes.IsEmpty)
+            {
+                return false;
+            }
 
             var type = FrameType.Parse(bytes, out var afterTypeRemainings);
 
@@ -44,6 +54,30 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             remainings = afterDataBytes;
 
             return true;
+        }
+
+        public void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
+        {
+            remainings = bytes;
+
+            FrameType
+                .CreateCrypto()
+                .WriteBytes(remainings, out remainings);
+
+            VariableLengthEncoding.Encode(remainings, (ulong)Offset, out var encodedLength);
+
+            remainings = remainings.Slice(encodedLength);
+
+            VariableLengthEncoding.Encode(remainings, (ulong)Data.Length, out encodedLength);
+
+            remainings = remainings.Slice(encodedLength);
+
+            if(!Data.Span.TryCopyTo(remainings))
+            {
+                throw new EncodingException();
+            }
+
+            remainings = remainings.Slice(Data.Length);
         }
     }
 }

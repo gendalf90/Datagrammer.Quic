@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol
 {
@@ -8,7 +9,7 @@ namespace Datagrammer.Quic.Protocol
         {
             if(bytes.IsEmpty || bytes.Length > sizeof(ulong))
             {
-                throw new ArgumentOutOfRangeException(nameof(bytes));
+                throw new EncodingException();
             }
 
             var result = 0UL;
@@ -27,7 +28,7 @@ namespace Datagrammer.Quic.Protocol
 
             if(destination.Length < length)
             {
-                throw new ArgumentOutOfRangeException(nameof(destination));
+                throw new EncodingException();
             }
 
             for(int i = 0, j = length - 1; i < length; i++, j--)

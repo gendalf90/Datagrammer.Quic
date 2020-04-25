@@ -41,8 +41,6 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public static PacketToken Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            remainings = ReadOnlyMemory<byte>.Empty;
-
             var tokenLength = VariableLengthEncoding.Decode32(bytes.Span, out var decodedBytesLength);
             var afterLengthBytes = bytes.Slice(decodedBytesLength);
 
@@ -60,12 +58,16 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public void WriteBytes(Span<byte> destination, out Span<byte> remainings)
         {
-            if(!bytes.Span.TryCopyTo(destination))
+            VariableLengthEncoding.Encode(destination, (ulong)bytes.Length, out var encodedLength);
+
+            var afterLengthBytes = destination.Slice(encodedLength);
+
+            if (!bytes.Span.TryCopyTo(afterLengthBytes))
             {
                 throw new EncodingException();
             }
 
-            remainings = destination.Slice(bytes.Length);
+            remainings = afterLengthBytes.Slice(bytes.Length);
         }
     }
 }

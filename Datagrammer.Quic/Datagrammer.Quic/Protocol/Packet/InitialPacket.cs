@@ -70,7 +70,7 @@ namespace Datagrammer.Quic.Protocol.Packet
         public void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
         {
             remainings = bytes;
-
+            
             new PacketFirstByte()
                 .SetInitial()
                 .SetPacketNumber(Number)

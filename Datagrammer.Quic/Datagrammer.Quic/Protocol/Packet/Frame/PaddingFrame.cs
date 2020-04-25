@@ -10,5 +10,12 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
                 .Parse(bytes, out remainings)
                 .IsPadding();
         }
+
+        public static void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
+        {
+            FrameType
+                .CreatePadding()
+                .WriteBytes(bytes, out remainings);
+        }
     }
 }
