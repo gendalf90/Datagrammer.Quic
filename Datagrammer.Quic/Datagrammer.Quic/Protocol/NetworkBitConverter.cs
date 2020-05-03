@@ -22,11 +22,11 @@ namespace Datagrammer.Quic.Protocol
             return result;
         }
 
-        public static int WriteUnaligned(Span<byte> destination, ulong value)
+        public static int WriteUnaligned(Span<byte> destination, ulong value, int? desiredLength = null)
         {
-            var length = GetByteLength(value);
+            var length = desiredLength ?? GetByteLength(value);
 
-            if(destination.Length < length)
+            if(length < 1 || destination.Length < length || length > sizeof(ulong))
             {
                 throw new EncodingException();
             }
