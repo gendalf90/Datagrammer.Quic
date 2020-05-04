@@ -25,5 +25,34 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             return afterLengthBytes.Slice(0, length);
         }
+
+        public static WritingContext StartHandshakeWriting(Span<byte> destination)
+        {
+            if (destination.Length < 3)
+            {
+                throw new EncodingException();
+            }
+
+            return WritingContext.Initialize(destination).Move(3);
+        }
+
+        public static int FinishHandshakeWriting(WritingContext context)
+        {
+            if (context.Length < 3)
+            {
+                throw new EncodingException();
+            }
+
+            var length = context.Length - 3;
+
+            if (length > ushort.MaxValue)
+            {
+                throw new EncodingException();
+            }
+
+            NetworkBitConverter.WriteUnaligned(context.Initial, (ulong)length, 3);
+
+            return context.Length;
+        }
     }
 }

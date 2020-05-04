@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
@@ -41,13 +42,14 @@ namespace Datagrammer.Quic.Protocol.Packet
                 return false;
             }
 
-            var firstByte = PacketFirstByte.Parse(bytes, out var afterFirstByteBytes);
+            var firstByte = PacketFirstByte.Parse(bytes.Span[0]);
 
-            if(!firstByte.IsInitialType())
+            if (!firstByte.IsInitialType())
             {
                 return false;
             }
 
+            var afterFirstByteBytes = bytes.Slice(1);
             var version = PacketVersion.Parse(afterFirstByteBytes, out var afterVersionBytes);
             var destinationConnectionId = PacketConnectionId.Parse(afterVersionBytes, out var afterDestinationConnectionIdBytes);
             var sourceConnectionId = PacketConnectionId.Parse(afterDestinationConnectionIdBytes, out var afterSourceConnectionIdBytes);
@@ -67,20 +69,34 @@ namespace Datagrammer.Quic.Protocol.Packet
             return true;
         }
 
-        public void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
+        public WritingContext StartWritingBytes(Span<byte> bytes)
         {
-            remainings = bytes;
-            
-            new PacketFirstByte()
-                .SetInitial()
-                .SetPacketNumber(Number)
-                .WriteBytes(remainings, out remainings);
+            if(bytes.IsEmpty)
+            {
+                throw new EncodingException();
+            }
+
+            var remainings = bytes.Slice(1);
 
             Version.WriteBytes(remainings, out remainings);
             DestinationConnectionId.WriteBytes(remainings, out remainings);
             SourceConnectionId.WriteBytes(remainings, out remainings);
             Token.WriteBytes(remainings, out remainings);
-            PacketLength.WritePacketBytes(remainings, Number, Payload, out remainings);
+
+            var context = PacketLength.StartPacketWriting(remainings);
+            var numberLength = Number.Write(context.Current);
+
+            bytes[0] = new PacketFirstByte()
+                .SetInitial()
+                .SetPacketNumberLength(numberLength)
+                .Build();
+
+            return context.Move(numberLength);
+        }
+
+        public void FinishWritingBytes(WritingContext context, out Span<byte> remainings)
+        {
+            PacketLength.FinishPacketWriting(context, out remainings);
         }
     }
 }

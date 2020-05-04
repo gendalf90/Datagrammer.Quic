@@ -5,8 +5,6 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct SessionId : IEquatable<SessionId>
     {
-        private const int MaxLength = 32;
-
         private readonly ReadOnlyMemory<byte> rawBytes;
         private readonly Guid guid;
 
@@ -62,31 +60,10 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static SessionId Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            if (bytes.IsEmpty)
-            {
-                throw new EncodingException();
-            }
+            var idBytes = ByteVector.SliceVectorBytes(bytes, 0..32, out remainings);
+            var resultGuid = idBytes.Length == 16 ? new Guid(idBytes.Span) : Guid.Empty;
 
-            var length = bytes.Span[0];
-
-            if (length > MaxLength)
-            {
-                throw new EncodingException();
-            }
-
-            var afterLengthBytes = bytes.Slice(1);
-
-            if (afterLengthBytes.Length < length)
-            {
-                throw new EncodingException();
-            }
-
-            var resultBytes = afterLengthBytes.Slice(0, length);
-            var resultGuid = length == 16 ? new Guid(resultBytes.Span) : Guid.Empty;
-
-            remainings = afterLengthBytes.Slice(length);
-
-            return new SessionId(resultBytes, resultGuid);
+            return new SessionId(idBytes, resultGuid);
         }
 
         public static SessionId Generate()
@@ -94,26 +71,23 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new SessionId(ReadOnlyMemory<byte>.Empty, Guid.NewGuid());
         }
 
-        public void WriteBytes(Span<byte> destination, out Span<byte> remainings)
+        public int WriteBytes(Span<byte> destination)
         {
-            if(destination.IsEmpty)
-            {
-                throw new EncodingException();
-            }
+            var context = ByteVector.StartVectorWriting(destination);
 
             var lengthOfValue = IsGuid ? 16 : rawBytes.Length;
-            var destinationOfValue = destination.Slice(1);
-            var isWritingSuccess = IsGuid 
-                ? guid.TryWriteBytes(destinationOfValue) 
-                : rawBytes.Span.TryCopyTo(destinationOfValue);
+            var isWritingSuccess = IsGuid
+                ? guid.TryWriteBytes(context.Current)
+                : rawBytes.Span.TryCopyTo(context.Current);
 
-            if(!isWritingSuccess)
+            if (!isWritingSuccess)
             {
                 throw new EncodingException();
             }
 
-            destination[0] = (byte)lengthOfValue;
-            remainings = destinationOfValue.Slice(lengthOfValue);
+            context.Move(lengthOfValue);
+
+            return ByteVector.FinishVectorWriting(context, 0..32);
         }
 
         public override string ToString()

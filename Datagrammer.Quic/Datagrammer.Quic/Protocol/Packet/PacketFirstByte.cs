@@ -49,14 +49,8 @@ namespace Datagrammer.Quic.Protocol.Packet
             return bytes.Slice(0, numberLength);
         }
 
-        public static PacketFirstByte Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static PacketFirstByte Parse(byte first)
         {
-            if(bytes.IsEmpty)
-            {
-                throw new EncodingException();
-            }
-
-            var first = bytes.Span[0];
             var isFixedBitValid = Convert.ToBoolean((first >> 6) & 1);
 
             if(!isFixedBitValid)
@@ -72,8 +66,6 @@ namespace Datagrammer.Quic.Protocol.Packet
             var isRetryType = packetType == 3;
             var numberLength = (first & 3) + 1;
 
-            remainings = bytes.Slice(1);
-
             return new PacketFirstByte(isLongHeader,
                                        isInitialType,
                                        isRttType,
@@ -82,13 +74,8 @@ namespace Datagrammer.Quic.Protocol.Packet
                                        numberLength);
         }
 
-        public void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
+        public byte Build()
         {
-            if(bytes.IsEmpty)
-            {
-                throw new EncodingException();
-            }
-
             var result = 1 << 6;
 
             result |= Convert.ToInt32(isLongHeader) << 7;
@@ -110,14 +97,11 @@ namespace Datagrammer.Quic.Protocol.Packet
 
             result |= numberLength - 1;
 
-            bytes[0] = (byte)result;
-            remainings = bytes.Slice(1);
+            return (byte)result;
         }
 
-        public PacketFirstByte SetPacketNumber(PacketNumber packetNumber)
+        public PacketFirstByte SetPacketNumberLength(int length)
         {
-            var length = packetNumber.GetLength();
-
             if(length < 1 || length > 4)
             {
                 throw new EncodingException();

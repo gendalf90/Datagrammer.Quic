@@ -26,7 +26,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new ProtocolVersion(version);
         }
 
-        public void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
+        public int WriteBytes(Span<byte> bytes)
         {
             if (bytes.Length < 2)
             {
@@ -36,7 +36,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             bytes[0] = (byte)(version >> 8 & byte.MaxValue);
             bytes[1] = (byte)(version & byte.MaxValue);
 
-            remainings = bytes.Slice(2);
+            return 2;
         }
 
         public static ProtocolVersion Tls12 { get; } = new ProtocolVersion(3 << 8 | 3);

@@ -29,7 +29,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new HandshakeRandom(new Guid(bytesOfPart1.Span), new Guid(bytesOfPart2.Span));
         }
 
-        public void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
+        public int WriteBytes(Span<byte> bytes)
         {
             var destinationOfPart1 = bytes;
 
@@ -45,7 +45,7 @@ namespace Datagrammer.Quic.Protocol.Tls
                 throw new EncodingException();
             }
 
-            remainings = bytes.Slice(32);
+            return 32;
         }
 
         public static HandshakeRandom Generate()

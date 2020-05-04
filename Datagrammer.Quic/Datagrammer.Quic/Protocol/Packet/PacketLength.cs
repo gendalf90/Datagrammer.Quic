@@ -1,5 +1,6 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
 using System;
+using System.Transactions;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
@@ -20,23 +21,33 @@ namespace Datagrammer.Quic.Protocol.Packet
             return afterLengthBytes.Slice(0, length);
         }
 
-        public static void WritePacketBytes(Span<byte> bytes, PacketNumber packetNumber, ReadOnlyMemory<byte> payload, out Span<byte> remainings)
+        public static WritingContext StartPacketWriting(Span<byte> bytes)
         {
-            var length = packetNumber.GetLength() + payload.Length;
-            
-            VariableLengthEncoding.Encode(bytes, (ulong)length, out var encodedLength);
-
-            var afterLengthBytes = bytes.Slice(encodedLength);
-
-            if(afterLengthBytes.Length < length)
+            if(bytes.Length < 4)
             {
                 throw new EncodingException();
             }
 
-            packetNumber.Write(afterLengthBytes, out var afterPacketNumberBytes);
-            payload.Span.CopyTo(afterPacketNumberBytes);
+            return WritingContext.Initialize(bytes).Move(4);
+        }
 
-            remainings = afterLengthBytes.Slice(length);
+        public static void FinishPacketWriting(WritingContext context, out Span<byte> remainings)
+        {
+            if(context.Length < 4)
+            {
+                throw new EncodingException();
+            }
+
+            var payloadLength = context.Length - 4;
+
+            VariableLengthEncoding.Encode(context.Initial, (ulong)payloadLength, out var encodedLength);
+
+            var afterLengthBytes = context.Initial.Slice(encodedLength);
+            var payload = context.Initial.Slice(4, payloadLength);
+
+            payload.CopyTo(afterLengthBytes);
+
+            remainings = context.Initial.Slice(encodedLength + payloadLength);
         }
     }
 }

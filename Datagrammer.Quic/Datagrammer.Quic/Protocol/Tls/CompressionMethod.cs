@@ -17,7 +17,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             return bytes.Span[0] != 1 && bytes.Span[1] != 0;
         }
 
-        public static void WriteEmpty(Span<byte> destination, out Span<byte> remainings)
+        public static int WriteEmpty(Span<byte> destination)
         {
             if(destination.Length < 2)
             {
@@ -27,7 +27,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             destination[0] = 1;
             destination[1] = 0;
 
-            remainings = destination.Slice(2);
+            return 2;
         }
     }
 }

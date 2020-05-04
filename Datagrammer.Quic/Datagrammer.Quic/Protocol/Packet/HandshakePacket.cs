@@ -37,13 +37,14 @@ namespace Datagrammer.Quic.Protocol.Packet
                 return false;
             }
 
-            var firstByte = PacketFirstByte.Parse(bytes, out var afterFirstByteBytes);
+            var firstByte = PacketFirstByte.Parse(bytes.Span[0]);
 
             if (!firstByte.IsHandshakeType())
             {
                 return false;
             }
 
+            var afterFirstByteBytes = bytes.Slice(1);
             var version = PacketVersion.Parse(afterFirstByteBytes, out var afterVersionBytes);
             var destinationConnectionId = PacketConnectionId.Parse(afterVersionBytes, out var afterDestinationConnectionIdBytes);
             var sourceConnectionId = PacketConnectionId.Parse(afterDestinationConnectionIdBytes, out var afterSourceConnectionIdBytes);
