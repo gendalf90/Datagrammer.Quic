@@ -3,7 +3,7 @@ using System;
 
 namespace Datagrammer.Quic.Protocol
 {
-    public readonly ref struct WritingContext
+    public ref struct WritingContext
     {
         private WritingContext(Span<byte> initial, Span<byte> current, int length)
         {
@@ -12,25 +12,35 @@ namespace Datagrammer.Quic.Protocol
             Length = length;
         }
 
-        public Span<byte> Initial { get; }
+        public Span<byte> Initial { get; private set; }
 
-        public Span<byte> Current { get; }
+        public Span<byte> Current { get; private set; }
 
-        public int Length { get; }
+        public int Length { get; private set; }
 
-        public WritingContext Move(int length)
+        public void Move(int length)
         {
             if(length > Current.Length || length < 0)
             {
                 throw new EncodingException();
             }
 
-            return new WritingContext(Initial, Current.Slice(length), Length + length);
+            Current = Current.Slice(length);
+            Length += length;
         }
 
         public static WritingContext Initialize(Span<byte> initial)
         {
             return new WritingContext(initial, initial, 0);
+        }
+
+        public static WritingContext Initialize(Span<byte> initial, int length)
+        {
+            var context = Initialize(initial);
+
+            context.Move(length);
+
+            return context;
         }
     }
 }

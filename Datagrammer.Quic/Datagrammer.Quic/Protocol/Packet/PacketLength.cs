@@ -23,12 +23,7 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public static WritingContext StartPacketWriting(Span<byte> bytes)
         {
-            if(bytes.Length < 4)
-            {
-                throw new EncodingException();
-            }
-
-            return WritingContext.Initialize(bytes).Move(4);
+            return WritingContext.Initialize(bytes, 4);
         }
 
         public static void FinishPacketWriting(WritingContext context, out Span<byte> remainings)

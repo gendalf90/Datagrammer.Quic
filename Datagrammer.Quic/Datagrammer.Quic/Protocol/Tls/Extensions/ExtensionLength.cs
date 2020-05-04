@@ -27,12 +27,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
 
         public static WritingContext StartPayloadWriting(Span<byte> destination)
         {
-            if (destination.Length < 2)
-            {
-                throw new EncodingException();
-            }
-
-            return WritingContext.Initialize(destination).Move(2);
+            return WritingContext.Initialize(destination, 2);
         }
 
         public static int FinishPayloadWriting(WritingContext context)

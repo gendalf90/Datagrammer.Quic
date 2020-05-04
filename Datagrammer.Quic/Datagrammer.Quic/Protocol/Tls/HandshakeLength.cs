@@ -28,12 +28,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static WritingContext StartHandshakeWriting(Span<byte> destination)
         {
-            if (destination.Length < 3)
-            {
-                throw new EncodingException();
-            }
-
-            return WritingContext.Initialize(destination).Move(3);
+            return WritingContext.Initialize(destination, 3);
         }
 
         public static int FinishHandshakeWriting(WritingContext context)

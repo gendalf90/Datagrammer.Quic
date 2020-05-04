@@ -86,12 +86,13 @@ namespace Datagrammer.Quic.Protocol.Packet
             var context = PacketLength.StartPacketWriting(remainings);
             var numberLength = Number.Write(context.Current);
 
+            context.Move(numberLength);
             bytes[0] = new PacketFirstByte()
                 .SetInitial()
                 .SetPacketNumberLength(numberLength)
                 .Build();
-
-            return context.Move(numberLength);
+            
+            return context;
         }
 
         public void FinishWritingBytes(WritingContext context, out Span<byte> remainings)
