@@ -5,12 +5,17 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
 {
     public readonly struct SupportedVersionExtension
     {
+        private readonly bool isTls13Supported;
+
         private SupportedVersionExtension(bool isTls13Supported)
         {
-            IsTls13Supported = isTls13Supported;
+            this.isTls13Supported = isTls13Supported;
         }
 
-        public bool IsTls13Supported { get; }
+        public bool IsCurrentVersion()
+        {
+            return isTls13Supported;
+        }
 
         public static bool TryParse(ReadOnlyMemory<byte> bytes, out SupportedVersionExtension result, out ReadOnlyMemory<byte> remainings)
         {
@@ -45,7 +50,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return true;
         }
 
-        public static SupportedVersionExtension Tls13OnlySupported { get; } = new SupportedVersionExtension(true);
+        public static SupportedVersionExtension CurrentVersion { get; } = new SupportedVersionExtension(true);
 
         public int WriteBytes(Span<byte> bytes)
         {
@@ -54,11 +59,11 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             var payloadContext = ExtensionLength.StartPayloadWriting(bytes);
             var versionContext = ByteVector.StartVectorWriting(payloadContext.Current);
 
-            if(IsTls13Supported)
+            if(isTls13Supported)
             {
                 versionContext.Move(ProtocolVersion.Tls13.WriteBytes(versionContext.Current));
             }
-            
+
             payloadContext.Move(ByteVector.FinishVectorWriting(versionContext, 0..254));
             
             return ExtensionLength.FinishPayloadWriting(payloadContext);

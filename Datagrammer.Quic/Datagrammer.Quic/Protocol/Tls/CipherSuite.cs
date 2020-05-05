@@ -1,64 +1,66 @@
-﻿using Datagrammer.Quic.Protocol.Error;
-using System;
+﻿using System;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct CipherSuite
     {
-        private static byte[] TLS_AES_128_GCM_SHA256 = new byte[] { 13, 1 };
+        private readonly Cipher? tlsaes128gcmsha256;
 
-        private readonly ReadOnlyMemory<byte> bytes;
-
-        private CipherSuite(ReadOnlyMemory<byte> bytes)
+        private CipherSuite(Cipher? tlsaes128gcmsha256)
         {
-            this.bytes = bytes;
+            this.tlsaes128gcmsha256 = tlsaes128gcmsha256;
+        }
+
+        public bool TryGetFirstSupported(out Cipher cipher)
+        {
+            cipher = new Cipher();
+
+            if(tlsaes128gcmsha256.HasValue)
+            {
+                cipher = tlsaes128gcmsha256.Value;
+                return true;
+            }
+
+            return false;
         }
 
         public static CipherSuite Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             var data = ByteVector.SliceVectorBytes(bytes, 2..ushort.MaxValue, out bytes);
 
-            if (data.Length % 2 == 1)
-            {
-                throw new EncodingException();
-            }
-
             remainings = bytes;
 
-            return new CipherSuite(data);
+            return ParseSupported(data);
         }
 
-        public bool Intersect(CipherSuite other)
+        private static CipherSuite ParseSupported(ReadOnlyMemory<byte> bytes)
         {
-            var currentBytes = bytes.Span;
-            var otherBytes = other.bytes.Span;
+            var remainings = bytes;
+            var tlsaes128gcmsha256 = new Cipher?();
 
-            for(int i = 0; i < currentBytes.Length; i += 2)
+            while (!remainings.IsEmpty)
             {
-                for(int j = 0; j < otherBytes.Length; j += 2)
+                var current = Cipher.Parse(remainings, out remainings);
+
+                if (current == Cipher.TLS_AES_128_GCM_SHA256)
                 {
-                    if (currentBytes[i] == otherBytes[j] && currentBytes[i + 1] == otherBytes[j + 1])
-                    {
-                        return true;
-                    }
+                    tlsaes128gcmsha256 = current;
                 }
             }
 
-            return false;
+            return new CipherSuite(tlsaes128gcmsha256);
         }
 
-        public static CipherSuite Supported { get; } = new CipherSuite(TLS_AES_128_GCM_SHA256);
+        public static CipherSuite TLS_AES_128_GCM_SHA256_Only { get; } = new CipherSuite(Cipher.TLS_AES_128_GCM_SHA256);
 
         public int WriteBytes(Span<byte> destination)
         {
             var context = ByteVector.StartVectorWriting(destination);
 
-            if (!bytes.Span.TryCopyTo(context.Current))
+            if(tlsaes128gcmsha256.HasValue)
             {
-                throw new EncodingException();
+                context.Move(tlsaes128gcmsha256.Value.WriteBytes(context.Current));
             }
-
-            context.Move(bytes.Length);
 
             return ByteVector.FinishVectorWriting(context, 2..ushort.MaxValue);
         }
