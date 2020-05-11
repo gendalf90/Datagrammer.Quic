@@ -30,7 +30,11 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static WritingContext StartVectorWriting(Span<byte> bytes)
         {
-            return WritingContext.Initialize(bytes, 4);
+            var context = new WritingContext(bytes);
+
+            context.Move(4);
+
+            return context;
         }
 
         public static int FinishVectorWriting(WritingContext context, Range range)
@@ -49,10 +53,10 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             var lengthSizeInBytes = NetworkBitConverter.GetByteLength((ulong)range.End.Value);
 
-            NetworkBitConverter.WriteUnaligned(context.Initial, (ulong)payloadLength, lengthSizeInBytes);
+            NetworkBitConverter.WriteUnaligned(context.Start, (ulong)payloadLength, lengthSizeInBytes);
 
-            var afterLengthBytes = context.Initial.Slice(lengthSizeInBytes);
-            var payload = context.Initial.Slice(4, payloadLength);
+            var afterLengthBytes = context.Start.Slice(lengthSizeInBytes);
+            var payload = context.Start.Slice(4, payloadLength);
 
             payload.CopyTo(afterLengthBytes);
 

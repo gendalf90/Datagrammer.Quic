@@ -3,16 +3,16 @@ using System;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
-    public readonly struct Cipher : IEquatable<Cipher>
+    public readonly struct SignatureScheme : IEquatable<SignatureScheme>
     {
         private readonly ushort code;
 
-        private Cipher(ushort code)
+        private SignatureScheme(ushort code)
         {
             this.code = code;
         }
 
-        public static Cipher Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static SignatureScheme Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             if(bytes.Length < 2)
             {
@@ -24,7 +24,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             remainings = bytes.Slice(2);
 
-            return new Cipher(code);
+            return new SignatureScheme(code);
         }
 
         public int WriteBytes(Span<byte> bytes)
@@ -32,16 +32,16 @@ namespace Datagrammer.Quic.Protocol.Tls
             return NetworkBitConverter.WriteUnaligned(bytes, code, 2);
         }
 
-        public static Cipher TLS_AES_128_GCM_SHA256 { get; } = new Cipher(4865);
+        public static SignatureScheme RSA_PSS_RSAE_SHA256 { get; } = new SignatureScheme(2052);
 
-        public bool Equals(Cipher other)
+        public bool Equals(SignatureScheme other)
         {
             return code == other.code;
         }
 
         public override bool Equals(object obj)
         {
-            return obj is Cipher version && Equals(version);
+            return obj is SignatureScheme version && Equals(version);
         }
 
         public override int GetHashCode()
@@ -49,12 +49,12 @@ namespace Datagrammer.Quic.Protocol.Tls
             return code;
         }
 
-        public static bool operator ==(Cipher first, Cipher second)
+        public static bool operator ==(SignatureScheme first, SignatureScheme second)
         {
             return first.Equals(second);
         }
 
-        public static bool operator !=(Cipher first, Cipher second)
+        public static bool operator !=(SignatureScheme first, SignatureScheme second)
         {
             return !first.Equals(second);
         }

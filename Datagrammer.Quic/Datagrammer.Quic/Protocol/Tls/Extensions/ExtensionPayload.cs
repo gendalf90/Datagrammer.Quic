@@ -3,9 +3,9 @@ using System;
 
 namespace Datagrammer.Quic.Protocol.Tls.Extensions
 {
-    public static class ExtensionLength
+    public static class ExtensionPayload
     {
-        public static ReadOnlyMemory<byte> SlicePayload(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> afterPayloadBytes)
+        public static ReadOnlyMemory<byte> Slice(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> afterPayloadBytes)
         {
             if (bytes.Length < 2)
             {
@@ -25,12 +25,16 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return bytes.Slice(2, payloadLength);
         }
 
-        public static WritingContext StartPayloadWriting(Span<byte> destination)
+        public static WritingContext StartWriting(Span<byte> destination)
         {
-            return WritingContext.Initialize(destination, 2);
+            var context = new WritingContext(destination);
+
+            context.Move(2);
+
+            return context;
         }
 
-        public static int FinishPayloadWriting(WritingContext context)
+        public static int FinishWriting(WritingContext context)
         {
             if(context.Length < 2)
             {
@@ -44,7 +48,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
                 throw new EncodingException();
             }
 
-            NetworkBitConverter.WriteUnaligned(context.Initial, (ulong)length, 2);
+            NetworkBitConverter.WriteUnaligned(context.Start, (ulong)length, 2);
 
             return context.Length;
         }

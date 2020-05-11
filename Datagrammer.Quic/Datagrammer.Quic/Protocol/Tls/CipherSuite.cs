@@ -4,21 +4,23 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct CipherSuite
     {
-        private readonly Cipher? tlsaes128gcmsha256;
+        private readonly ReadOnlyMemory<byte> bytes;
 
-        private CipherSuite(Cipher? tlsaes128gcmsha256)
+        private CipherSuite(ReadOnlyMemory<byte> bytes)
         {
-            this.tlsaes128gcmsha256 = tlsaes128gcmsha256;
+            this.bytes = bytes;
         }
 
-        public bool TryGetFirstSupported(out Cipher cipher)
+        public bool HasCipher(Cipher cipher)
         {
-            cipher = new Cipher();
+            var remainings = bytes;
 
-            if(tlsaes128gcmsha256.HasValue)
+            while (!remainings.IsEmpty)
             {
-                cipher = tlsaes128gcmsha256.Value;
-                return true;
+                if (Cipher.Parse(remainings, out remainings) == cipher)
+                {
+                    return true;
+                }
             }
 
             return false;
@@ -26,41 +28,16 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static CipherSuite Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            var data = ByteVector.SliceVectorBytes(bytes, 2..ushort.MaxValue, out bytes);
+            var data = ByteVector.SliceVectorBytes(bytes, 2..ushort.MaxValue, out remainings);
 
-            remainings = bytes;
-
-            return ParseSupported(data);
+            return new CipherSuite(data);
         }
 
-        private static CipherSuite ParseSupported(ReadOnlyMemory<byte> bytes)
-        {
-            var remainings = bytes;
-            var tlsaes128gcmsha256 = new Cipher?();
-
-            while (!remainings.IsEmpty)
-            {
-                var current = Cipher.Parse(remainings, out remainings);
-
-                if (current == Cipher.TLS_AES_128_GCM_SHA256)
-                {
-                    tlsaes128gcmsha256 = current;
-                }
-            }
-
-            return new CipherSuite(tlsaes128gcmsha256);
-        }
-
-        public static CipherSuite TLS_AES_128_GCM_SHA256_Only { get; } = new CipherSuite(Cipher.TLS_AES_128_GCM_SHA256);
-
-        public int WriteBytes(Span<byte> destination)
+        public static int WriteWithCipher(Span<byte> destination, Cipher cipher)
         {
             var context = ByteVector.StartVectorWriting(destination);
 
-            if(tlsaes128gcmsha256.HasValue)
-            {
-                context.Move(tlsaes128gcmsha256.Value.WriteBytes(context.Current));
-            }
+            context.Move(cipher.WriteBytes(context.Remainings));
 
             return ByteVector.FinishVectorWriting(context, 2..ushort.MaxValue);
         }

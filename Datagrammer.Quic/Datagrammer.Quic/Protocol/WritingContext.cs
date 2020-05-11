@@ -3,44 +3,49 @@ using System;
 
 namespace Datagrammer.Quic.Protocol
 {
-    public ref struct WritingContext
+    public readonly ref struct WritingContext
     {
-        private WritingContext(Span<byte> initial, Span<byte> current, int length)
+        public WritingContext(Span<byte> start, Span<byte> remainings, int length)
         {
-            Initial = initial;
-            Current = current;
+            Start = start;
+            Remainings = remainings;
             Length = length;
         }
 
-        public Span<byte> Initial { get; private set; }
-
-        public Span<byte> Current { get; private set; }
-
-        public int Length { get; private set; }
-
-        public void Move(int length)
+        public WritingContext(Span<byte> start)
         {
-            if(length > Current.Length || length < 0)
+            Start = start;
+            Remainings = start;
+            Length = 0;
+        }
+
+        public Span<byte> Start { get; }
+
+        public Span<byte> Remainings { get; }
+
+        public int Length { get; }
+    }
+
+    public static class WritingContextExtensions
+    {
+        public static void Move(this ref WritingContext context, int length)
+        {
+            if (length > context.Remainings.Length || length < 0)
             {
                 throw new EncodingException();
             }
 
-            Current = Current.Slice(length);
-            Length += length;
+            context = new WritingContext(context.Start, context.Remainings.Slice(length), context.Length + length);
         }
 
-        public static WritingContext Initialize(Span<byte> initial)
+        public static void Write(this ref WritingContext context, ReadOnlySpan<byte> bytes)
         {
-            return new WritingContext(initial, initial, 0);
-        }
+            if(!bytes.TryCopyTo(context.Remainings))
+            {
+                throw new EncodingException();
+            }
 
-        public static WritingContext Initialize(Span<byte> initial, int length)
-        {
-            var context = Initialize(initial);
-
-            context.Move(length);
-
-            return context;
+            context = new WritingContext(context.Start, context.Remainings.Slice(bytes.Length), context.Length + bytes.Length);
         }
     }
 }

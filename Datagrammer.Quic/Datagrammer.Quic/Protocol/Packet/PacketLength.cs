@@ -23,7 +23,11 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public static WritingContext StartPacketWriting(Span<byte> bytes)
         {
-            return WritingContext.Initialize(bytes, 4);
+            var context = new WritingContext(bytes);
+
+            context.Move(4);
+
+            return context;
         }
 
         public static void FinishPacketWriting(WritingContext context, out Span<byte> remainings)
@@ -35,14 +39,14 @@ namespace Datagrammer.Quic.Protocol.Packet
 
             var payloadLength = context.Length - 4;
 
-            VariableLengthEncoding.Encode(context.Initial, (ulong)payloadLength, out var encodedLength);
+            VariableLengthEncoding.Encode(context.Start, (ulong)payloadLength, out var encodedLength);
 
-            var afterLengthBytes = context.Initial.Slice(encodedLength);
-            var payload = context.Initial.Slice(4, payloadLength);
+            var afterLengthBytes = context.Start.Slice(encodedLength);
+            var payload = context.Start.Slice(4, payloadLength);
 
             payload.CopyTo(afterLengthBytes);
 
-            remainings = context.Initial.Slice(encodedLength + payloadLength);
+            remainings = context.Start.Slice(encodedLength + payloadLength);
         }
     }
 }

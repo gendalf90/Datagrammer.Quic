@@ -3,16 +3,16 @@ using System;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
-    public readonly struct Cipher : IEquatable<Cipher>
+    public readonly struct NamedGroup : IEquatable<NamedGroup>
     {
         private readonly ushort code;
 
-        private Cipher(ushort code)
+        private NamedGroup(ushort code)
         {
             this.code = code;
         }
 
-        public static Cipher Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static NamedGroup Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             if(bytes.Length < 2)
             {
@@ -24,7 +24,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             remainings = bytes.Slice(2);
 
-            return new Cipher(code);
+            return new NamedGroup(code);
         }
 
         public int WriteBytes(Span<byte> bytes)
@@ -32,16 +32,16 @@ namespace Datagrammer.Quic.Protocol.Tls
             return NetworkBitConverter.WriteUnaligned(bytes, code, 2);
         }
 
-        public static Cipher TLS_AES_128_GCM_SHA256 { get; } = new Cipher(4865);
+        public static NamedGroup X25519 { get; } = new NamedGroup(29);
 
-        public bool Equals(Cipher other)
+        public bool Equals(NamedGroup other)
         {
             return code == other.code;
         }
 
         public override bool Equals(object obj)
         {
-            return obj is Cipher version && Equals(version);
+            return obj is NamedGroup version && Equals(version);
         }
 
         public override int GetHashCode()
@@ -49,12 +49,12 @@ namespace Datagrammer.Quic.Protocol.Tls
             return code;
         }
 
-        public static bool operator ==(Cipher first, Cipher second)
+        public static bool operator ==(NamedGroup first, NamedGroup second)
         {
             return first.Equals(second);
         }
 
-        public static bool operator !=(Cipher first, Cipher second)
+        public static bool operator !=(NamedGroup first, NamedGroup second)
         {
             return !first.Equals(second);
         }

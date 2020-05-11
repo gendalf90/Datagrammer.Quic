@@ -1,31 +1,35 @@
-﻿using Datagrammer.Quic.Protocol.Error;
-using System;
+﻿using System;
 
 namespace Datagrammer.Quic.Protocol.Tls.Extensions
 {
     public readonly struct SupportedVersionExtension
     {
-        private readonly bool isTls13Supported;
+        private readonly ReadOnlyMemory<byte> bytes;
 
-        private SupportedVersionExtension(bool isTls13Supported)
+        private SupportedVersionExtension(ReadOnlyMemory<byte> bytes)
         {
-            this.isTls13Supported = isTls13Supported;
+            this.bytes = bytes;
         }
 
-        public bool IsCurrentVersion()
+        public bool HasVersion(ProtocolVersion version)
         {
-            return isTls13Supported;
+            var remainings = bytes;
+
+            while (!remainings.IsEmpty)
+            {
+                if (ProtocolVersion.Parse(remainings, out remainings) == version)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public static bool TryParse(ReadOnlyMemory<byte> bytes, out SupportedVersionExtension result, out ReadOnlyMemory<byte> remainings)
         {
             result = new SupportedVersionExtension();
             remainings = bytes;
-
-            if (bytes.IsEmpty)
-            {
-                return false;
-            }
 
             var type = ExtensionType.Parse(bytes, out var afterTypeBytes);
 
@@ -34,54 +38,22 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
                 return false;
             }
 
-            var payload = ExtensionLength.SlicePayload(afterTypeBytes, out var afterPayloadBytes);
-            var versionBytes = ByteVector.SliceVectorBytes(payload, 0..254, out var afterVersionBytes);
+            var payload = ExtensionVectorPayload.Slice(afterTypeBytes, 2..254, out remainings);
 
-            if(!afterVersionBytes.IsEmpty)
-            {
-                throw new EncodingException();
-            }
-
-            var isTls13Supported = HasTls13Version(versionBytes);
-
-            remainings = afterPayloadBytes;
-            result = new SupportedVersionExtension(isTls13Supported);
+            result = new SupportedVersionExtension(payload);
 
             return true;
         }
 
-        public static SupportedVersionExtension CurrentVersion { get; } = new SupportedVersionExtension(true);
-
-        public int WriteBytes(Span<byte> bytes)
+        public static int WriteWithVersion(Span<byte> destination, ProtocolVersion version)
         {
-            ExtensionType.SupportedVersions.WriteBytes(bytes, out bytes);
+            ExtensionType.SupportedVersions.WriteBytes(destination, out var afterTypeBytes);
 
-            var payloadContext = ExtensionLength.StartPayloadWriting(bytes);
-            var versionContext = ByteVector.StartVectorWriting(payloadContext.Current);
+            var context = ExtensionVectorPayload.StartWriting(afterTypeBytes);
 
-            if(isTls13Supported)
-            {
-                versionContext.Move(ProtocolVersion.Tls13.WriteBytes(versionContext.Current));
-            }
+            context.Move(version.WriteBytes(context.Remainings));
 
-            payloadContext.Move(ByteVector.FinishVectorWriting(versionContext, 0..254));
-            
-            return ExtensionLength.FinishPayloadWriting(payloadContext);
-        }
-
-        private static bool HasTls13Version(ReadOnlyMemory<byte> bytes)
-        {
-            var remainings = bytes;
-
-            while(!remainings.IsEmpty)
-            {
-                if(ProtocolVersion.Parse(remainings, out remainings) == ProtocolVersion.Tls13)
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return ExtensionVectorPayload.FinishWriting(context, 2..254);
         }
     }
 }

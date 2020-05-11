@@ -16,11 +16,6 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             result = new TransportParametersExtension();
             remainings = bytes;
 
-            if(bytes.IsEmpty)
-            {
-                return false;
-            }
-
             var type = ExtensionType.Parse(bytes, out var afterTypeBytes);
 
             if(type != ExtensionType.TransportParameters)
@@ -28,7 +23,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
                 return false;
             }
 
-            var payload = ExtensionLength.SlicePayload(afterTypeBytes, out remainings);
+            var payload = ExtensionPayload.Slice(afterTypeBytes, out remainings);
 
             result = new TransportParametersExtension(payload);
 

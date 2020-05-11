@@ -77,8 +77,8 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             var lengthOfValue = IsGuid ? 16 : rawBytes.Length;
             var isWritingSuccess = IsGuid
-                ? guid.TryWriteBytes(context.Current)
-                : rawBytes.Span.TryCopyTo(context.Current);
+                ? guid.TryWriteBytes(context.Remainings)
+                : rawBytes.Span.TryCopyTo(context.Remainings);
 
             if (!isWritingSuccess)
             {

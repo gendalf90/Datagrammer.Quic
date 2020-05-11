@@ -28,7 +28,11 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static WritingContext StartHandshakeWriting(Span<byte> destination)
         {
-            return WritingContext.Initialize(destination, 3);
+            var context = new WritingContext(destination);
+
+            context.Move(3);
+
+            return context;
         }
 
         public static int FinishHandshakeWriting(WritingContext context)
@@ -45,7 +49,7 @@ namespace Datagrammer.Quic.Protocol.Tls
                 throw new EncodingException();
             }
 
-            NetworkBitConverter.WriteUnaligned(context.Initial, (ulong)length, 3);
+            NetworkBitConverter.WriteUnaligned(context.Start, (ulong)length, 3);
 
             return context.Length;
         }
