@@ -41,5 +41,10 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             return ByteVector.FinishVectorWriting(context, 2..ushort.MaxValue);
         }
+
+        public override string ToString()
+        {
+            return BitConverter.ToString(bytes.ToArray());
+        }
     }
 }

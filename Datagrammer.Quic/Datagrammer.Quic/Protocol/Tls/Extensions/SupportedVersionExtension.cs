@@ -55,5 +55,10 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
 
             return ExtensionVectorPayload.FinishWriting(context, 2..254);
         }
+
+        public override string ToString()
+        {
+            return BitConverter.ToString(bytes.ToArray());
+        }
     }
 }

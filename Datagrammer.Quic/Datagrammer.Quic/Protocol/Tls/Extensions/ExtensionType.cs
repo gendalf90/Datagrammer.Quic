@@ -34,11 +34,11 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             remainings = bytes.Slice(2);
         }
 
-        public static ExtensionType ServerName { get; } = new ExtensionType(0);
-
         public static ExtensionType SupportedVersions { get; } = new ExtensionType(43);
 
         public static ExtensionType SignatureAlgorithms { get; } = new ExtensionType(13);
+
+        public static ExtensionType ApplicationLayerProtocolNegotiation { get; } = new ExtensionType(16);
 
         public static ExtensionType SupportedGroups { get; } = new ExtensionType(10);
 

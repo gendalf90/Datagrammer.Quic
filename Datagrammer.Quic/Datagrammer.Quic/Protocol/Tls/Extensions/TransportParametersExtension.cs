@@ -29,5 +29,10 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
 
             return true;
         }
+
+        public override string ToString()
+        {
+            return BitConverter.ToString(Data.ToArray());
+        }
     }
 }

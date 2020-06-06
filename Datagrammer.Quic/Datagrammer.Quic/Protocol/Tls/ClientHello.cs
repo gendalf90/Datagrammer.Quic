@@ -58,7 +58,14 @@ namespace Datagrammer.Quic.Protocol.Tls
                 throw new EncodingException();
             }
 
-            result = new ClientHello(random, cipherSuite, sessionId, afterCompressionMethodBytes);
+            var extensionBytes = ByteVector.SliceVectorBytes(afterCompressionMethodBytes, 8..ushort.MaxValue, out var afterExtensionBytes);
+
+            if(!afterExtensionBytes.IsEmpty)
+            {
+                throw new EncodingException();
+            }
+
+            result = new ClientHello(random, cipherSuite, sessionId, extensionBytes);
             remainings = afterBodyBytes;
 
             return true;

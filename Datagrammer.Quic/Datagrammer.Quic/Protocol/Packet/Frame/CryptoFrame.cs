@@ -56,6 +56,19 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             return true;
         }
 
+        //public static WritingContext StartWriting(Span<byte> destination, int offset)
+        //{
+        //    FrameType
+        //        .CreateCrypto()
+        //        .WriteBytes(destination, out var remainings);
+
+        //    VariableLengthEncoding.Encode(remainings, (ulong)offset, out var encodedLength);
+
+        //    remainings = remainings.Slice(encodedLength);
+
+
+        //}
+
         public void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
         {
             remainings = bytes;
