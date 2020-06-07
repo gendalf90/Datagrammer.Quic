@@ -30,17 +30,6 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return true;
         }
 
-        public static int WriteWithProtocolName(Span<byte> destination, ProtocolName protocolName)
-        {
-            ExtensionType.ApplicationLayerProtocolNegotiation.WriteBytes(destination, out var afterTypeBytes);
-
-            var context = ExtensionVectorPayload.StartWriting(afterTypeBytes);
-
-            context.Move(protocolName.WriteBytes(context.Remainings));
-
-            return ExtensionVectorPayload.FinishWriting(context, 2..ushort.MaxValue);
-        }
-
         public override string ToString()
         {
             return BitConverter.ToString(bytes.ToArray());

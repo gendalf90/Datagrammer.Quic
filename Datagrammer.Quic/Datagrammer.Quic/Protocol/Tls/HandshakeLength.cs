@@ -5,6 +5,8 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public static class HandshakeLength
     {
+        private const int MaxLength = 0xFFFFFF;
+
         public static ReadOnlyMemory<byte> SliceHandshakeBytes(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> afterHandshakeBytes)
         {
             if(bytes.Length < 3)
@@ -26,32 +28,46 @@ namespace Datagrammer.Quic.Protocol.Tls
             return afterLengthBytes.Slice(0, length);
         }
 
-        public static WritingContext StartHandshakeWriting(Span<byte> destination)
+        public static WritingContext StartWriting(Span<byte> destination)
         {
             var context = new WritingContext(destination);
 
-            context.Move(3);
+            context.Cursor = context.Cursor.Move(3);
 
             return context;
         }
 
-        public static int FinishHandshakeWriting(WritingContext context)
+        public ref struct WritingContext
         {
-            if (context.Length < 3)
+            private Span<byte> start;
+
+            public WritingContext(Span<byte> start)
             {
-                throw new EncodingException();
+                this.start = start;
+
+                Cursor = new WritingCursor(start, 0);
             }
 
-            var length = context.Length - 3;
+            public WritingCursor Cursor { get; set; }
 
-            if (length > ushort.MaxValue)
+            public int Complete()
             {
-                throw new EncodingException();
+                if (Cursor.Offset < 3)
+                {
+                    throw new EncodingException();
+                }
+
+                var payloadLength = Cursor.Offset - 3;
+
+                if (payloadLength > MaxLength)
+                {
+                    throw new EncodingException();
+                }
+
+                NetworkBitConverter.WriteUnaligned(start, (ulong)payloadLength, 3);
+
+                return Cursor.Offset;
             }
-
-            NetworkBitConverter.WriteUnaligned(context.Start, (ulong)length, 3);
-
-            return context.Length;
         }
     }
 }

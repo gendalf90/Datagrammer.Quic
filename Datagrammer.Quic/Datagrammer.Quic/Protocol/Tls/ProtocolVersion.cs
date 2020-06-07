@@ -26,17 +26,17 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new ProtocolVersion(version);
         }
 
-        public int WriteBytes(Span<byte> bytes)
+        public void WriteBytes(ref WritingCursor cursor)
         {
-            if (bytes.Length < 2)
+            if (cursor.Destination.Length < 2)
             {
                 throw new EncodingException();
             }
 
-            bytes[0] = (byte)(version >> 8 & byte.MaxValue);
-            bytes[1] = (byte)(version & byte.MaxValue);
+            cursor.Destination[0] = (byte)(version >> 8 & byte.MaxValue);
+            cursor.Destination[1] = (byte)(version & byte.MaxValue);
 
-            return 2;
+            cursor = cursor.Move(2);
         }
 
         public static ProtocolVersion Tls12 { get; } = new ProtocolVersion(3 << 8 | 3);

@@ -21,13 +21,13 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static ProtocolName H3_20 { get; } = new ProtocolName(Encoding.UTF8.GetBytes("h3-20"));
 
-        public int WriteBytes(Span<byte> destination)
+        public void WriteBytes(ref WritingCursor cursor)
         {
-            var context = ByteVector.StartVectorWriting(destination);
+            var context = ByteVector.StartVectorWriting(cursor.Destination, 1..byte.MaxValue);
 
-            context.Write(bytes.Span);
+            context.Cursor = context.Cursor.Write(bytes.Span);
 
-            return ByteVector.FinishVectorWriting(context, 1..byte.MaxValue);
+            cursor = cursor.Move(context.Complete());
         }
 
         public override string ToString()

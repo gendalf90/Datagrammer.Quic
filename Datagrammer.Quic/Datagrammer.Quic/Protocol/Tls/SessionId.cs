@@ -71,23 +71,22 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new SessionId(ReadOnlyMemory<byte>.Empty, Guid.NewGuid());
         }
 
-        public int WriteBytes(Span<byte> destination)
+        public void WriteBytes(ref WritingCursor cursor)
         {
-            var context = ByteVector.StartVectorWriting(destination);
+            var context = ByteVector.StartVectorWriting(cursor.Destination, 0..32);
 
             var lengthOfValue = IsGuid ? 16 : rawBytes.Length;
             var isWritingSuccess = IsGuid
-                ? guid.TryWriteBytes(context.Remainings)
-                : rawBytes.Span.TryCopyTo(context.Remainings);
+                ? guid.TryWriteBytes(context.Cursor.Destination)
+                : rawBytes.Span.TryCopyTo(context.Cursor.Destination);
 
             if (!isWritingSuccess)
             {
                 throw new EncodingException();
             }
 
-            context.Move(lengthOfValue);
-
-            return ByteVector.FinishVectorWriting(context, 0..32);
+            context.Cursor = context.Cursor.Move(lengthOfValue);
+            cursor = cursor.Move(context.Complete());
         }
 
         public override string ToString()

@@ -30,6 +30,13 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return true;
         }
 
+        public static ExtensionPayload.WritingContext StartWriting(Span<byte> destination)
+        {
+            ExtensionType.TransportParameters.WriteBytes(destination, out var remainings);
+
+            return ExtensionPayload.StartWriting(remainings);
+        }
+
         public override string ToString()
         {
             return BitConverter.ToString(Data.ToArray());

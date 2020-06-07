@@ -18,13 +18,13 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new KeyExchange(data);
         }
 
-        public int WriteBytes(Span<byte> destination)
+        public void WriteBytes(ref WritingCursor cursor)
         {
-            var context = ByteVector.StartVectorWriting(destination);
+            var context = ByteVector.StartVectorWriting(cursor.Destination, 1..ushort.MaxValue);
 
-            context.Write(bytes.Span);
+            context.Cursor = context.Cursor.Write(bytes.Span);
 
-            return ByteVector.FinishVectorWriting(context, 1..ushort.MaxValue);
+            cursor = cursor.Move(context.Complete());
         }
     }
 }

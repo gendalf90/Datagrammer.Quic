@@ -14,19 +14,6 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             this.bytes = bytes;
         }
 
-        public bool HasPskKeMode()
-        {
-            foreach(var b in bytes.Span)
-            {
-                if (b == PskKeMode)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         public static bool TryParse(ReadOnlyMemory<byte> bytes, out PskKeyExchangeModesExtension result, out ReadOnlyMemory<byte> remainings)
         {
             result = new PskKeyExchangeModesExtension();
@@ -44,18 +31,6 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             result = new PskKeyExchangeModesExtension(payload);
 
             return true;
-        }
-
-        public static int WriteWithPskKeMode(Span<byte> destination)
-        {
-            ExtensionType.SupportedVersions.WriteBytes(destination, out var afterTypeBytes);
-
-            var context = ExtensionVectorPayload.StartWriting(afterTypeBytes);
-
-            context.Remainings[0] = PskKeMode;
-            context.Move(1);
-
-            return ExtensionVectorPayload.FinishWriting(context, 1..255);
         }
 
         public override string ToString()

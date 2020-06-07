@@ -18,22 +18,36 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return vectorBytes;
         }
 
-        public static WritingContext StartWriting(Span<byte> destination)
+        public static WritingContext StartWriting(Span<byte> destination, Range range)
         {
             var payloadContext = ExtensionPayload.StartWriting(destination);
-            var vectorContext = ByteVector.StartVectorWriting(payloadContext.Remainings);
+            var vectorContext = ByteVector.StartVectorWriting(payloadContext.Cursor.Destination, range);
 
-            return new WritingContext(destination, vectorContext.Remainings, vectorContext.Length + payloadContext.Length);
+            return new WritingContext(payloadContext, vectorContext);
         }
 
-        public static int FinishWriting(WritingContext context, Range range)
+        public ref struct WritingContext
         {
-            var payloadContext = ExtensionPayload.StartWriting(context.Start);
-            var vectorContext = new WritingContext(payloadContext.Remainings, context.Remainings, payloadContext.Length - context.Remainings.Length);
+            private ExtensionPayload.WritingContext payloadContext;
+            private ByteVector.WritingContext vectorContext;
 
-            payloadContext.Move(ByteVector.FinishVectorWriting(vectorContext, range));
+            public WritingContext(ExtensionPayload.WritingContext payloadContext,
+                                  ByteVector.WritingContext vectorContext)
+            {
+                this.payloadContext = payloadContext;
+                this.vectorContext = vectorContext;
 
-            return ExtensionPayload.FinishWriting(payloadContext);
+                Cursor = vectorContext.Cursor;
+            }
+
+            public WritingCursor Cursor { get; set; }
+
+            public int Complete()
+            {
+                payloadContext.Cursor = payloadContext.Cursor.Move(vectorContext.Complete());
+
+                return payloadContext.Complete();
+            }
         }
     }
 }

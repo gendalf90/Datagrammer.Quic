@@ -29,28 +29,42 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
         {
             var context = new WritingContext(destination);
 
-            context.Move(2);
+            context.Cursor = context.Cursor.Move(2);
 
             return context;
         }
 
-        public static int FinishWriting(WritingContext context)
+        public ref struct WritingContext
         {
-            if(context.Length < 2)
+            private Span<byte> start;
+
+            public WritingContext(Span<byte> start)
             {
-                throw new EncodingException();
+                this.start = start;
+
+                Cursor = new WritingCursor(start, 0);
             }
 
-            var length = context.Length - 2;
+            public WritingCursor Cursor { get; set; }
 
-            if (length > ushort.MaxValue)
+            public int Complete()
             {
-                throw new EncodingException();
+                if (Cursor.Offset < 2)
+                {
+                    throw new EncodingException();
+                }
+
+                var payloadLength = Cursor.Offset - 2;
+
+                if (payloadLength > ushort.MaxValue)
+                {
+                    throw new EncodingException();
+                }
+
+                NetworkBitConverter.WriteUnaligned(start, (ulong)payloadLength, 2);
+
+                return Cursor.Offset;
             }
-
-            NetworkBitConverter.WriteUnaligned(context.Start, (ulong)length, 2);
-
-            return context.Length;
         }
     }
 }

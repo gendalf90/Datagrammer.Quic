@@ -48,7 +48,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             var version = PacketVersion.Parse(afterFirstByteBytes, out var afterVersionBytes);
             var destinationConnectionId = PacketConnectionId.Parse(afterVersionBytes, out var afterDestinationConnectionIdBytes);
             var sourceConnectionId = PacketConnectionId.Parse(afterDestinationConnectionIdBytes, out var afterSourceConnectionIdBytes);
-            var packetBytes = PacketLength.SlicePacketBytes(afterSourceConnectionIdBytes, out var afterPacketBytes);
+            var packetBytes = PacketPayload.SlicePacketBytes(afterSourceConnectionIdBytes, out var afterPacketBytes);
             var packetNumberBytes = firstByte.SlicePacketNumberBytes(packetBytes, out var afterPacketNumberBytes);
             var number = PacketNumber.Parse(packetNumberBytes);
 

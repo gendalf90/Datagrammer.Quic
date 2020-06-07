@@ -11,21 +11,6 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             this.bytes = bytes;
         }
 
-        public bool HasGroup(NamedGroup group)
-        {
-            var remainings = bytes;
-
-            while (!remainings.IsEmpty)
-            {
-                if (NamedGroup.Parse(remainings, out remainings) == group)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         public static bool TryParse(ReadOnlyMemory<byte> bytes, out SupportedGroupsExtension result, out ReadOnlyMemory<byte> remainings)
         {
             result = new SupportedGroupsExtension();
@@ -43,17 +28,6 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             result = new SupportedGroupsExtension(payload);
 
             return true;
-        }
-
-        public static int WriteWithGroup(Span<byte> destination, NamedGroup group)
-        {
-            ExtensionType.SignatureAlgorithms.WriteBytes(destination, out var afterTypeBytes);
-
-            var context = ExtensionVectorPayload.StartWriting(afterTypeBytes);
-
-            context.Move(group.WriteBytes(context.Remainings));
-
-            return ExtensionVectorPayload.FinishWriting(context, 0..ushort.MaxValue);
         }
 
         public override string ToString()

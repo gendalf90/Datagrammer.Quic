@@ -17,17 +17,17 @@ namespace Datagrammer.Quic.Protocol.Tls
             return bytes.Span[0] == 1 && bytes.Span[1] == 0;
         }
 
-        public static int WriteEmpty(Span<byte> destination)
+        public static void WriteEmpty(ref WritingCursor cursor)
         {
-            if(destination.Length < 2)
+            if(cursor.Destination.Length < 2)
             {
                 throw new EncodingException();
             }
 
-            destination[0] = 1;
-            destination[1] = 0;
+            cursor.Destination[0] = 1;
+            cursor.Destination[1] = 0;
 
-            return 2;
+            cursor = cursor.Move(2);
         }
     }
 }

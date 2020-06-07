@@ -27,9 +27,9 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new Cipher(code);
         }
 
-        public int WriteBytes(Span<byte> bytes)
+        public void WriteBytes(ref WritingCursor cursor)
         {
-            return NetworkBitConverter.WriteUnaligned(bytes, code, 2);
+            cursor = cursor.Move(NetworkBitConverter.WriteUnaligned(cursor.Destination, code, 2));
         }
 
         public static Cipher TLS_AES_128_GCM_SHA256 { get; } = new Cipher(4865);

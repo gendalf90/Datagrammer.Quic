@@ -4,20 +4,30 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct CipherSuite
     {
+        private readonly ReadOnlyMemory<Cipher> ciphers;
         private readonly ReadOnlyMemory<byte> bytes;
 
-        private CipherSuite(ReadOnlyMemory<byte> bytes)
+        private CipherSuite(ReadOnlyMemory<byte> bytes, ReadOnlyMemory<Cipher> ciphers)
         {
             this.bytes = bytes;
+            this.ciphers = ciphers;
         }
 
-        public bool HasCipher(Cipher cipher)
+        public bool HasCipher(Cipher cipherToSearch)
         {
+            foreach(var cipher in ciphers.Span)
+            {
+                if(cipher == cipherToSearch)
+                {
+                    return true;
+                }
+            }
+
             var remainings = bytes;
 
             while (!remainings.IsEmpty)
             {
-                if (Cipher.Parse(remainings, out remainings) == cipher)
+                if (Cipher.Parse(remainings, out remainings) == cipherToSearch)
                 {
                     return true;
                 }
@@ -26,20 +36,28 @@ namespace Datagrammer.Quic.Protocol.Tls
             return false;
         }
 
+        public static CipherSuite Supported { get; } = new CipherSuite(ReadOnlyMemory<byte>.Empty, new[] { Cipher.TLS_AES_128_GCM_SHA256 });
         public static CipherSuite Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             var data = ByteVector.SliceVectorBytes(bytes, 2..ushort.MaxValue, out remainings);
 
-            return new CipherSuite(data);
+            return new CipherSuite(data, ReadOnlyMemory<Cipher>.Empty);
         }
 
-        public static int WriteWithCipher(Span<byte> destination, Cipher cipher)
+        public void WriteBytes(ref WritingCursor cursor)
         {
-            var context = ByteVector.StartVectorWriting(destination);
+            var vectorContext = ByteVector.StartVectorWriting(cursor.Destination, 2..ushort.MaxValue);
+            var vectorCursor = vectorContext.Cursor;
 
-            context.Move(cipher.WriteBytes(context.Remainings));
+            foreach (var cipher in ciphers.Span)
+            {
+                cipher.WriteBytes(ref vectorCursor);
+            }
 
-            return ByteVector.FinishVectorWriting(context, 2..ushort.MaxValue);
+            vectorCursor = vectorCursor.Write(bytes.Span);
+
+            vectorContext.Cursor = vectorCursor;
+            cursor = cursor.Move(vectorContext.Complete());
         }
 
         public override string ToString()

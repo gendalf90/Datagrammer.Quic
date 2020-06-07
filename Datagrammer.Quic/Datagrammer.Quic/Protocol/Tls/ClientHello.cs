@@ -5,10 +5,10 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct ClientHello
     {
-        public ClientHello(HandshakeRandom random,
-                           CipherSuite cipherSuite,
-                           SessionId sessionId,
-                           ReadOnlyMemory<byte> payload)
+        private ClientHello(HandshakeRandom random,
+                            CipherSuite cipherSuite,
+                            SessionId sessionId,
+                            ReadOnlyMemory<byte> payload)
         {
             Random = random;
             CipherSuite = cipherSuite;
@@ -69,6 +69,29 @@ namespace Datagrammer.Quic.Protocol.Tls
             remainings = afterBodyBytes;
 
             return true;
+        }
+
+        public static HandshakeWritingContext StartWriting(Span<byte> destination, 
+                                                           HandshakeRandom random,
+                                                           CipherSuite cipherSuite,
+                                                           SessionId sessionId)
+        {
+            HandshakeType.ClientHello.WriteBytes(destination, out var remainings);
+
+            var payloadContext = HandshakeLength.StartWriting(remainings);
+            var payloadCursor = payloadContext.Cursor;
+
+            ProtocolVersion.Tls12.WriteBytes(ref payloadCursor);
+            random.WriteBytes(ref payloadCursor);
+            sessionId.WriteBytes(ref payloadCursor);
+            cipherSuite.WriteBytes(ref payloadCursor);
+            CompressionMethod.WriteEmpty(ref payloadCursor);
+
+            payloadContext.Cursor = payloadCursor;
+
+            var extensionsContext = ByteVector.StartVectorWriting(payloadContext.Cursor.Destination, 8..ushort.MaxValue);
+
+            return new HandshakeWritingContext(payloadContext, extensionsContext);
         }
     }
 }

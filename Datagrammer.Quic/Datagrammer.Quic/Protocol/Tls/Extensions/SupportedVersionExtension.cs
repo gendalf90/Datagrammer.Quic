@@ -11,21 +11,6 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             this.bytes = bytes;
         }
 
-        public bool HasVersion(ProtocolVersion version)
-        {
-            var remainings = bytes;
-
-            while (!remainings.IsEmpty)
-            {
-                if (ProtocolVersion.Parse(remainings, out remainings) == version)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         public static bool TryParse(ReadOnlyMemory<byte> bytes, out SupportedVersionExtension result, out ReadOnlyMemory<byte> remainings)
         {
             result = new SupportedVersionExtension();
@@ -43,17 +28,6 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             result = new SupportedVersionExtension(payload);
 
             return true;
-        }
-
-        public static int WriteWithVersion(Span<byte> destination, ProtocolVersion version)
-        {
-            ExtensionType.SupportedVersions.WriteBytes(destination, out var afterTypeBytes);
-
-            var context = ExtensionVectorPayload.StartWriting(afterTypeBytes);
-
-            context.Move(version.WriteBytes(context.Remainings));
-
-            return ExtensionVectorPayload.FinishWriting(context, 2..254);
         }
 
         public override string ToString()

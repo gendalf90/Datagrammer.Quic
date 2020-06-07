@@ -28,39 +28,51 @@ namespace Datagrammer.Quic.Protocol.Tls
             return afterLengthBytes.Slice(0, length);
         }
 
-        public static WritingContext StartVectorWriting(Span<byte> bytes)
+        public static WritingContext StartVectorWriting(Span<byte> bytes, Range range)
         {
-            var context = new WritingContext(bytes);
+            var context = new WritingContext(bytes, range);
+            var lengthSizeInBytes = NetworkBitConverter.GetByteLength((ulong)range.End.Value);
 
-            context.Move(4);
+            context.Cursor = context.Cursor.Move(lengthSizeInBytes);
 
             return context;
         }
 
-        public static int FinishVectorWriting(WritingContext context, Range range)
+        public ref struct WritingContext
         {
-            if (context.Length < 4)
+            private Span<byte> start;
+            private Range range;
+
+            public WritingContext(Span<byte> start, Range range)
             {
-                throw new EncodingException();
+                this.start = start;
+                this.range = range;
+
+                Cursor = new WritingCursor(start, 0);
             }
 
-            var payloadLength = context.Length - 4;
+            public WritingCursor Cursor { get; set; }
 
-            if(payloadLength < range.Start.Value || payloadLength > range.End.Value)
+            public int Complete()
             {
-                throw new EncodingException();
+                var lengthSizeInBytes = NetworkBitConverter.GetByteLength((ulong)range.End.Value);
+
+                if (Cursor.Offset < lengthSizeInBytes)
+                {
+                    throw new EncodingException();
+                }
+
+                var payloadLength = Cursor.Offset - lengthSizeInBytes;
+
+                if (payloadLength < range.Start.Value || payloadLength > range.End.Value)
+                {
+                    throw new EncodingException();
+                }
+
+                NetworkBitConverter.WriteUnaligned(start, (ulong)payloadLength, lengthSizeInBytes);
+
+                return Cursor.Offset;
             }
-
-            var lengthSizeInBytes = NetworkBitConverter.GetByteLength((ulong)range.End.Value);
-
-            NetworkBitConverter.WriteUnaligned(context.Start, (ulong)payloadLength, lengthSizeInBytes);
-
-            var afterLengthBytes = context.Start.Slice(lengthSizeInBytes);
-            var payload = context.Start.Slice(4, payloadLength);
-
-            payload.CopyTo(afterLengthBytes);
-
-            return lengthSizeInBytes + payloadLength;
         }
     }
 }

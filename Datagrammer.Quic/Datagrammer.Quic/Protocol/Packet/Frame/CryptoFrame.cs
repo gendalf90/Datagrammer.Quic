@@ -5,7 +5,7 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 {
     public readonly struct CryptoFrame
     {
-        public CryptoFrame(int offset, ReadOnlyMemory<byte> data)
+        private CryptoFrame(int offset, ReadOnlyMemory<byte> data)
         {
             if(offset < 0)
             {
@@ -56,41 +56,15 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             return true;
         }
 
-        //public static WritingContext StartWriting(Span<byte> destination, int offset)
-        //{
-        //    FrameType
-        //        .CreateCrypto()
-        //        .WriteBytes(destination, out var remainings);
-
-        //    VariableLengthEncoding.Encode(remainings, (ulong)offset, out var encodedLength);
-
-        //    remainings = remainings.Slice(encodedLength);
-
-
-        //}
-
-        public void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
+        public static PacketPayload.WritingContext StartWriting(Span<byte> destination, int offset)
         {
-            remainings = bytes;
+            FrameType.CreateCrypto().WriteBytes(destination, out var remainings);
 
-            FrameType
-                .CreateCrypto()
-                .WriteBytes(remainings, out remainings);
-
-            VariableLengthEncoding.Encode(remainings, (ulong)Offset, out var encodedLength);
+            VariableLengthEncoding.Encode(remainings, (ulong)offset, out var encodedLength);
 
             remainings = remainings.Slice(encodedLength);
 
-            VariableLengthEncoding.Encode(remainings, (ulong)Data.Length, out encodedLength);
-
-            remainings = remainings.Slice(encodedLength);
-
-            if(!Data.Span.TryCopyTo(remainings))
-            {
-                throw new EncodingException();
-            }
-
-            remainings = remainings.Slice(Data.Length);
+            return PacketPayload.StartPacketWriting(remainings);
         }
     }
 }

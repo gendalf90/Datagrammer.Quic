@@ -54,7 +54,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             var destinationConnectionId = PacketConnectionId.Parse(afterVersionBytes, out var afterDestinationConnectionIdBytes);
             var sourceConnectionId = PacketConnectionId.Parse(afterDestinationConnectionIdBytes, out var afterSourceConnectionIdBytes);
             var token = PacketToken.Parse(afterSourceConnectionIdBytes, out var afterTokenBytes);
-            var packetBytes = PacketLength.SlicePacketBytes(afterTokenBytes, out var afterPacketBytes);
+            var packetBytes = PacketPayload.SlicePacketBytes(afterTokenBytes, out var afterPacketBytes);
             var packetNumberBytes = firstByte.SlicePacketNumberBytes(packetBytes, out var afterPacketNumberBytes);
             var number = PacketNumber.Parse(packetNumberBytes);
 
@@ -69,12 +69,12 @@ namespace Datagrammer.Quic.Protocol.Packet
             return true;
         }
 
-        public static WritingContext StartWriting(Span<byte> destination,
-                                                  PacketVersion version,
-                                                  PacketConnectionId destinationConnectionId,
-                                                  PacketConnectionId sourceConnectionId,
-                                                  PacketNumber number,
-                                                  PacketToken token)
+        public static PacketPayload.WritingContext StartWriting(Span<byte> destination,
+                                                                PacketVersion version,
+                                                                PacketConnectionId destinationConnectionId,
+                                                                PacketConnectionId sourceConnectionId,
+                                                                PacketNumber number,
+                                                                PacketToken token)
         {
             if(destination.IsEmpty)
             {
@@ -88,21 +88,16 @@ namespace Datagrammer.Quic.Protocol.Packet
             sourceConnectionId.WriteBytes(remainings, out remainings);
             token.WriteBytes(remainings, out remainings);
 
-            var context = PacketLength.StartPacketWriting(remainings);
-            var numberLength = number.Write(context.Remainings);
+            var context = PacketPayload.StartPacketWriting(remainings);
+            var lengthOfNumber = number.Write(context.Cursor.Destination);
 
-            context.Move(numberLength);
+            context.Cursor = context.Cursor.Move(lengthOfNumber);
             destination[0] = new PacketFirstByte()
                 .SetInitial()
-                .SetPacketNumberLength(numberLength)
+                .SetPacketNumberLength(lengthOfNumber)
                 .Build();
             
             return context;
-        }
-
-        public static void FinishWriting(WritingContext context, out Span<byte> remainings)
-        {
-            PacketLength.FinishPacketWriting(context, out remainings);
         }
     }
 }

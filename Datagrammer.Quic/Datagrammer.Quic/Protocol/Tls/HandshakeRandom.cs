@@ -29,23 +29,21 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new HandshakeRandom(new Guid(bytesOfPart1.Span), new Guid(bytesOfPart2.Span));
         }
 
-        public int WriteBytes(Span<byte> bytes)
+        public void WriteBytes(ref WritingCursor cursor)
         {
-            var destinationOfPart1 = bytes;
-
-            if(!part1.TryWriteBytes(destinationOfPart1))
+            if (!part1.TryWriteBytes(cursor.Destination))
             {
                 throw new EncodingException();
             }
 
-            var destinationOfPart2 = destinationOfPart1.Slice(16);
+            var destinationOfPart2 = cursor.Destination.Slice(16);
 
             if (!part2.TryWriteBytes(destinationOfPart2))
             {
                 throw new EncodingException();
             }
 
-            return 32;
+            cursor = cursor.Move(32);
         }
 
         public static HandshakeRandom Generate()
