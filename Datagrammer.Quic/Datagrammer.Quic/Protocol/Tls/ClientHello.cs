@@ -58,7 +58,7 @@ namespace Datagrammer.Quic.Protocol.Tls
                 throw new EncodingException();
             }
 
-            var extensionBytes = ByteVector.SliceVectorBytes(afterCompressionMethodBytes, 8..ushort.MaxValue, out var afterExtensionBytes);
+            var extensionBytes = ByteVector.SliceVectorBytes(afterCompressionMethodBytes, 0..ushort.MaxValue, out var afterExtensionBytes);
 
             if(!afterExtensionBytes.IsEmpty)
             {
@@ -86,7 +86,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             cipherSuite.WriteBytes(ref destination);
             CompressionMethod.WriteEmpty(ref destination);
 
-            var extensionsContext = ByteVector.StartVectorWriting(ref destination, 8..ushort.MaxValue);
+            var extensionsContext = ByteVector.StartVectorWriting(ref destination, 0..ushort.MaxValue);
 
             return new HandshakeWritingContext(payloadContext, extensionsContext);
         }

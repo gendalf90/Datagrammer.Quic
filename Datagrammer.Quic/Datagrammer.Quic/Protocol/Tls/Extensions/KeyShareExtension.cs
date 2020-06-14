@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Tls.Extensions
 {
@@ -28,6 +29,22 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             result = new KeyShareExtension(payload);
 
             return true;
+        }
+
+        public void WriteBytes(ref Span<byte> destination)
+        {
+            ExtensionType.KeyShare.WriteBytes(ref destination);
+
+            var context = ExtensionVectorPayload.StartWriting(ref destination, 0..ushort.MaxValue);
+
+            if (!bytes.Span.TryCopyTo(destination))
+            {
+                throw new EncodingException();
+            }
+
+            destination = destination.Slice(bytes.Length);
+
+            context.Complete(ref destination);
         }
 
         public override string ToString()

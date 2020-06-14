@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Tls.Extensions
 {
@@ -31,6 +32,22 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             result = new PskKeyExchangeModesExtension(payload);
 
             return true;
+        }
+
+        public void WriteBytes(ref Span<byte> destination)
+        {
+            ExtensionType.PskKeyExchangeModes.WriteBytes(ref destination);
+
+            var context = ExtensionVectorPayload.StartWriting(ref destination, 1..255);
+
+            if (!bytes.Span.TryCopyTo(destination))
+            {
+                throw new EncodingException();
+            }
+
+            destination = destination.Slice(bytes.Length);
+
+            context.Complete(ref destination);
         }
 
         public override string ToString()
