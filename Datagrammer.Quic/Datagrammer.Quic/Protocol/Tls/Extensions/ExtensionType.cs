@@ -27,11 +27,11 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return new ExtensionType(code);
         }
 
-        public void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
+        public void WriteBytes(ref Span<byte> bytes)
         {
-            NetworkBitConverter.WriteUnaligned(bytes, code, 2);
+            var writtenLength = NetworkBitConverter.WriteUnaligned(bytes, code, 2);
 
-            remainings = bytes.Slice(2);
+            bytes = bytes.Slice(writtenLength);
         }
 
         public static ExtensionType SupportedVersions { get; } = new ExtensionType(43);

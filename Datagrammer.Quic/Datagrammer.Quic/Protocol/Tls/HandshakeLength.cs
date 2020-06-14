@@ -28,36 +28,39 @@ namespace Datagrammer.Quic.Protocol.Tls
             return afterLengthBytes.Slice(0, length);
         }
 
-        public static WritingContext StartWriting(Span<byte> destination)
+        public static WritingContext StartWriting(ref Span<byte> destination)
         {
+            if(destination.Length < 3)
+            {
+                throw new EncodingException();
+            }
+
             var context = new WritingContext(destination);
 
-            context.Cursor = context.Cursor.Move(3);
+            destination = destination.Slice(3);
 
             return context;
         }
 
-        public ref struct WritingContext
+        public readonly ref struct WritingContext
         {
-            private Span<byte> start;
+            private readonly Span<byte> start;
 
             public WritingContext(Span<byte> start)
             {
                 this.start = start;
-
-                Cursor = new WritingCursor(start, 0);
             }
 
-            public WritingCursor Cursor { get; set; }
-
-            public int Complete()
+            public void Complete(ref Span<byte> bytes)
             {
-                if (Cursor.Offset < 3)
+                var offset = start.Length - bytes.Length;
+
+                if (offset < 3)
                 {
                     throw new EncodingException();
                 }
 
-                var payloadLength = Cursor.Offset - 3;
+                var payloadLength = offset - 3;
 
                 if (payloadLength > MaxLength)
                 {
@@ -65,8 +68,6 @@ namespace Datagrammer.Quic.Protocol.Tls
                 }
 
                 NetworkBitConverter.WriteUnaligned(start, (ulong)payloadLength, 3);
-
-                return Cursor.Offset;
             }
         }
     }

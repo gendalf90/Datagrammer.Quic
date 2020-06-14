@@ -79,11 +79,11 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             return new FrameType(code);
         }
 
-        public void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
+        public void WriteBytes(ref Span<byte> bytes)
         {
             VariableLengthEncoding.Encode(bytes, type, out var encodedLength);
 
-            remainings = bytes.Slice(encodedLength);
+            bytes = bytes.Slice(encodedLength);
         }
 
         public static FrameType CreatePadding() => new FrameType(0);

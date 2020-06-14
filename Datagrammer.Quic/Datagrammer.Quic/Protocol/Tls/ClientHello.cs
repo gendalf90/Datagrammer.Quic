@@ -71,25 +71,22 @@ namespace Datagrammer.Quic.Protocol.Tls
             return true;
         }
 
-        public static HandshakeWritingContext StartWriting(Span<byte> destination, 
+        public static HandshakeWritingContext StartWriting(ref Span<byte> destination, 
                                                            HandshakeRandom random,
                                                            CipherSuite cipherSuite,
                                                            SessionId sessionId)
         {
-            HandshakeType.ClientHello.WriteBytes(destination, out var remainings);
+            HandshakeType.ClientHello.WriteBytes(ref destination);
 
-            var payloadContext = HandshakeLength.StartWriting(remainings);
-            var payloadCursor = payloadContext.Cursor;
+            var payloadContext = HandshakeLength.StartWriting(ref destination);
 
-            ProtocolVersion.Tls12.WriteBytes(ref payloadCursor);
-            random.WriteBytes(ref payloadCursor);
-            sessionId.WriteBytes(ref payloadCursor);
-            cipherSuite.WriteBytes(ref payloadCursor);
-            CompressionMethod.WriteEmpty(ref payloadCursor);
+            ProtocolVersion.Tls12.WriteBytes(ref destination);
+            random.WriteBytes(ref destination);
+            sessionId.WriteBytes(ref destination);
+            cipherSuite.WriteBytes(ref destination);
+            CompressionMethod.WriteEmpty(ref destination);
 
-            payloadContext.Cursor = payloadCursor;
-
-            var extensionsContext = ByteVector.StartVectorWriting(payloadContext.Cursor.Destination, 8..ushort.MaxValue);
+            var extensionsContext = ByteVector.StartVectorWriting(ref destination, 8..ushort.MaxValue);
 
             return new HandshakeWritingContext(payloadContext, extensionsContext);
         }

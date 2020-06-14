@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 using System.Text;
 
 namespace Datagrammer.Quic.Protocol.Tls
@@ -21,13 +22,18 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static ProtocolName H3_20 { get; } = new ProtocolName(Encoding.UTF8.GetBytes("h3-20"));
 
-        public void WriteBytes(ref WritingCursor cursor)
+        public void WriteBytes(ref Span<byte> destination)
         {
-            var context = ByteVector.StartVectorWriting(cursor.Destination, 1..byte.MaxValue);
+            var context = ByteVector.StartVectorWriting(ref destination, 1..byte.MaxValue);
 
-            context.Cursor = context.Cursor.Write(bytes.Span);
+            if(!bytes.Span.TryCopyTo(destination))
+            {
+                throw new EncodingException();
+            }
 
-            cursor = cursor.Move(context.Complete());
+            destination = destination.Slice(bytes.Length);
+
+            context.Complete(ref destination);
         }
 
         public override string ToString()

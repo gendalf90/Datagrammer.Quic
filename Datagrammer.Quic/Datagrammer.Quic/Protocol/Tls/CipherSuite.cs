@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
@@ -37,6 +38,7 @@ namespace Datagrammer.Quic.Protocol.Tls
         }
 
         public static CipherSuite Supported { get; } = new CipherSuite(ReadOnlyMemory<byte>.Empty, new[] { Cipher.TLS_AES_128_GCM_SHA256 });
+
         public static CipherSuite Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             var data = ByteVector.SliceVectorBytes(bytes, 2..ushort.MaxValue, out remainings);
@@ -44,20 +46,23 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new CipherSuite(data, ReadOnlyMemory<Cipher>.Empty);
         }
 
-        public void WriteBytes(ref WritingCursor cursor)
+        public void WriteBytes(ref Span<byte> destination)
         {
-            var vectorContext = ByteVector.StartVectorWriting(cursor.Destination, 2..ushort.MaxValue);
-            var vectorCursor = vectorContext.Cursor;
+            var vectorContext = ByteVector.StartVectorWriting(ref destination, 2..ushort.MaxValue);
 
             foreach (var cipher in ciphers.Span)
             {
-                cipher.WriteBytes(ref vectorCursor);
+                cipher.WriteBytes(ref destination);
             }
 
-            vectorCursor = vectorCursor.Write(bytes.Span);
+            if(!bytes.Span.TryCopyTo(destination))
+            {
+                throw new EncodingException();
+            }
 
-            vectorContext.Cursor = vectorCursor;
-            cursor = cursor.Move(vectorContext.Complete());
+            destination = destination.Slice(bytes.Length);
+
+            vectorContext.Complete(ref destination);
         }
 
         public override string ToString()

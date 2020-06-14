@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
@@ -18,13 +19,18 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new KeyExchange(data);
         }
 
-        public void WriteBytes(ref WritingCursor cursor)
+        public void WriteBytes(ref Span<byte> destination)
         {
-            var context = ByteVector.StartVectorWriting(cursor.Destination, 1..ushort.MaxValue);
+            var context = ByteVector.StartVectorWriting(ref destination, 1..ushort.MaxValue);
 
-            context.Cursor = context.Cursor.Write(bytes.Span);
+            if(!bytes.Span.TryCopyTo(destination))
+            {
+                throw new EncodingException();
+            }
 
-            cursor = cursor.Move(context.Complete());
+            destination = destination.Slice(bytes.Length);
+
+            context.Complete(ref destination);
         }
     }
 }

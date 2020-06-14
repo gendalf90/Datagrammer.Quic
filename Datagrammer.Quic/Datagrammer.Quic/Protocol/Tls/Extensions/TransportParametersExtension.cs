@@ -30,11 +30,11 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return true;
         }
 
-        public static ExtensionPayload.WritingContext StartWriting(Span<byte> destination)
+        public static ExtensionPayload.WritingContext StartWriting(ref Span<byte> destination)
         {
-            ExtensionType.TransportParameters.WriteBytes(destination, out var remainings);
+            ExtensionType.TransportParameters.WriteBytes(ref destination);
 
-            return ExtensionPayload.StartWriting(remainings);
+            return ExtensionPayload.StartWriting(ref destination);
         }
 
         public override string ToString()

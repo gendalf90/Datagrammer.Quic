@@ -65,7 +65,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             return new PacketVersion(bytesSpan[0], bytesSpan[1], bytesSpan[2], bytesSpan[3]);
         }
 
-        public void WriteBytes(Span<byte> destination, out Span<byte> remainings)
+        public void WriteBytes(ref Span<byte> destination)
         {
             if(destination.Length < 4)
             {
@@ -77,7 +77,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             destination[2] = third;
             destination[3] = fourth;
 
-            remainings = destination.Slice(4);
+            destination = destination.Slice(4);
         }
 
         public static PacketVersion CreateOne()

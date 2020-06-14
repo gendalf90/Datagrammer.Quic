@@ -94,7 +94,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             return new PacketConnectionId(ReadOnlyMemory<byte>.Empty, Guid.NewGuid());
         }
 
-        public void WriteBytes(Span<byte> destination, out Span<byte> remainings)
+        public void WriteBytes(ref Span<byte> destination)
         {
             if(destination.IsEmpty)
             {
@@ -113,7 +113,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             }
 
             destination[0] = (byte)lengthOfValue;
-            remainings = destinationOfValue.Slice(lengthOfValue);
+            destination = destinationOfValue.Slice(lengthOfValue);
         }
 
         public override string ToString()

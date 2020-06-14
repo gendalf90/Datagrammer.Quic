@@ -32,7 +32,11 @@ namespace Datagrammer.Quic.Protocol.Tls
             return NetworkBitConverter.WriteUnaligned(bytes, code, 2);
         }
 
-        public static SignatureScheme RSA_PSS_RSAE_SHA256 { get; } = new SignatureScheme(2052);
+        public static SignatureScheme RSA_PSS_RSAE_SHA256 { get; } = new SignatureScheme(0x0804);
+
+        public static SignatureScheme RSA_PKCS1_SHA256 { get; } = new SignatureScheme(0x0401);
+
+        public static SignatureScheme ECDSA_SECP256R1_SHA256 { get; } = new SignatureScheme(0x0403);
 
         public bool Equals(SignatureScheme other)
         {

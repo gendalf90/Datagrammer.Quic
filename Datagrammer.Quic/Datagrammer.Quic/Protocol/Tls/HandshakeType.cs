@@ -26,7 +26,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new HandshakeType(code);
         }
 
-        public void WriteBytes(Span<byte> bytes, out Span<byte> remainings)
+        public void WriteBytes(ref Span<byte> bytes)
         {
             if (bytes.IsEmpty)
             {
@@ -34,8 +34,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             }
 
             bytes[0] = code;
-
-            remainings = bytes.Slice(1);
+            bytes = bytes.Slice(1);
         }
 
         public static HandshakeType ClientHello { get; } = new HandshakeType(1);

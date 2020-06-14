@@ -69,30 +69,31 @@ namespace Datagrammer.Quic.Protocol.Packet
             return true;
         }
 
-        public static PacketPayload.WritingContext StartWriting(Span<byte> destination,
+        public static PacketPayload.WritingContext StartWriting(ref Span<byte> destination,
                                                                 PacketVersion version,
                                                                 PacketConnectionId destinationConnectionId,
                                                                 PacketConnectionId sourceConnectionId,
                                                                 PacketNumber number,
                                                                 PacketToken token)
         {
-            if(destination.IsEmpty)
+            var start = destination;
+
+            if(start.IsEmpty)
             {
                 throw new EncodingException();
             }
 
-            var remainings = destination.Slice(1);
+            destination = start.Slice(1);
 
-            version.WriteBytes(remainings, out remainings);
-            destinationConnectionId.WriteBytes(remainings, out remainings);
-            sourceConnectionId.WriteBytes(remainings, out remainings);
-            token.WriteBytes(remainings, out remainings);
+            version.WriteBytes(ref destination);
+            destinationConnectionId.WriteBytes(ref destination);
+            sourceConnectionId.WriteBytes(ref destination);
+            token.WriteBytes(ref destination);
 
-            var context = PacketPayload.StartPacketWriting(remainings);
-            var lengthOfNumber = number.Write(context.Cursor.Destination);
+            var context = PacketPayload.StartPacketWriting(ref destination);
+            var lengthOfNumber = number.Write(ref destination);
 
-            context.Cursor = context.Cursor.Move(lengthOfNumber);
-            destination[0] = new PacketFirstByte()
+            start[0] = new PacketFirstByte()
                 .SetInitial()
                 .SetPacketNumberLength(lengthOfNumber)
                 .Build();

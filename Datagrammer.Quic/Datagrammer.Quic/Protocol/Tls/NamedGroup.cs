@@ -32,7 +32,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             return NetworkBitConverter.WriteUnaligned(bytes, code, 2);
         }
 
-        public static NamedGroup X25519 { get; } = new NamedGroup(29);
+        public static NamedGroup SECP256R1 { get; } = new NamedGroup(0x0017);
 
         public bool Equals(NamedGroup other)
         {

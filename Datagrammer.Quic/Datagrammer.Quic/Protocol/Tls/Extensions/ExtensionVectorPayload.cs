@@ -18,35 +18,30 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return vectorBytes;
         }
 
-        public static WritingContext StartWriting(Span<byte> destination, Range range)
+        public static WritingContext StartWriting(ref Span<byte> destination, Range range)
         {
-            var payloadContext = ExtensionPayload.StartWriting(destination);
-            var vectorContext = ByteVector.StartVectorWriting(payloadContext.Cursor.Destination, range);
+            var payloadContext = ExtensionPayload.StartWriting(ref destination);
+            var vectorContext = ByteVector.StartVectorWriting(ref destination, range);
 
             return new WritingContext(payloadContext, vectorContext);
         }
 
-        public ref struct WritingContext
+        public readonly ref struct WritingContext
         {
-            private ExtensionPayload.WritingContext payloadContext;
-            private ByteVector.WritingContext vectorContext;
+            private readonly ExtensionPayload.WritingContext payloadContext;
+            private readonly ByteVector.WritingContext vectorContext;
 
             public WritingContext(ExtensionPayload.WritingContext payloadContext,
                                   ByteVector.WritingContext vectorContext)
             {
                 this.payloadContext = payloadContext;
                 this.vectorContext = vectorContext;
-
-                Cursor = vectorContext.Cursor;
             }
 
-            public WritingCursor Cursor { get; set; }
-
-            public int Complete()
+            public void Complete(ref Span<byte> bytes)
             {
-                payloadContext.Cursor = payloadContext.Cursor.Move(vectorContext.Complete());
-
-                return payloadContext.Complete();
+                vectorContext.Complete(ref bytes);
+                payloadContext.Complete(ref bytes);
             }
         }
     }

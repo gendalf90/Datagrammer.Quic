@@ -56,15 +56,15 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             return true;
         }
 
-        public static PacketPayload.WritingContext StartWriting(Span<byte> destination, int offset)
+        public static PacketPayload.WritingContext StartWriting(ref Span<byte> bytes, int offset)
         {
-            FrameType.CreateCrypto().WriteBytes(destination, out var remainings);
+            FrameType.CreateCrypto().WriteBytes(ref bytes);
 
-            VariableLengthEncoding.Encode(remainings, (ulong)offset, out var encodedLength);
+            VariableLengthEncoding.Encode(bytes, (ulong)offset, out var encodedLength);
 
-            remainings = remainings.Slice(encodedLength);
+            bytes = bytes.Slice(encodedLength);
 
-            return PacketPayload.StartPacketWriting(remainings);
+            return PacketPayload.StartPacketWriting(ref bytes);
         }
     }
 }

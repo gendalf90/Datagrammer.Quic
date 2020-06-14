@@ -23,7 +23,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
                 return false;
             }
 
-            var payload = ExtensionVectorPayload.Slice(afterTypeBytes, 0..ushort.MaxValue, out remainings);
+            var payload = ExtensionVectorPayload.Slice(afterTypeBytes, 2..ushort.MaxValue, out remainings);
 
             result = new SupportedGroupsExtension(payload);
 

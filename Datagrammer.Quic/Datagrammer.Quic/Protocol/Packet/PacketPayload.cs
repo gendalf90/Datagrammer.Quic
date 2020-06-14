@@ -20,35 +20,39 @@ namespace Datagrammer.Quic.Protocol.Packet
             return afterLengthBytes.Slice(0, length);
         }
 
-        public static WritingContext StartPacketWriting(Span<byte> bytes)
+        public static WritingContext StartPacketWriting(ref Span<byte> bytes)
         {
+            if(bytes.Length < 4)
+            {
+                throw new EncodingException();
+            }
+
             var context = new WritingContext(bytes);
-            context.Cursor = context.Cursor.Move(4);
+
+            bytes = bytes.Slice(4);
 
             return context;
         }
 
-        public ref struct WritingContext
+        public readonly ref struct WritingContext
         {
-            private Span<byte> start;
+            private readonly Span<byte> start;
 
             public WritingContext(Span<byte> start)
             {
                 this.start = start;
-
-                Cursor = new WritingCursor(start, 0);
             }
 
-            public WritingCursor Cursor { get; set; }
-
-            public void Complete(out Span<byte> remainings)
+            public void Complete(ref Span<byte> bytes)
             {
-                if (Cursor.Offset < 4)
+                var offset = start.Length - bytes.Length;
+
+                if (offset < 4)
                 {
                     throw new EncodingException();
                 }
 
-                var payloadLength = Cursor.Offset - 4;
+                var payloadLength = offset - 4;
 
                 VariableLengthEncoding.Encode(start, (ulong)payloadLength, out var encodedLength);
 
@@ -57,7 +61,7 @@ namespace Datagrammer.Quic.Protocol.Packet
 
                 payload.CopyTo(afterLengthBytes);
 
-                remainings = start.Slice(encodedLength + payloadLength);
+                bytes = start.Slice(encodedLength + payloadLength);
             }
         }
     }

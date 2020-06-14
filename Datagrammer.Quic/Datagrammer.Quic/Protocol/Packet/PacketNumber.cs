@@ -27,11 +27,14 @@ namespace Datagrammer.Quic.Protocol.Packet
             return new PacketNumber(value);
         }
 
-        public int Write(Span<byte> destination)
+        public int Write(ref Span<byte> destination)
         {
             var valueToWrite = value & uint.MaxValue;
+            var writtenLength = NetworkBitConverter.WriteUnaligned(destination, valueToWrite);
 
-            return NetworkBitConverter.WriteUnaligned(destination, valueToWrite);
+            destination = destination.Slice(writtenLength);
+
+            return writtenLength;
         }
 
         public void WriteVariable(Span<byte> destination, out Span<byte> remainings)

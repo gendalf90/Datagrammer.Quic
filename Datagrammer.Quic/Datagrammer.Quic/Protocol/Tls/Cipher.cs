@@ -27,12 +27,14 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new Cipher(code);
         }
 
-        public void WriteBytes(ref WritingCursor cursor)
+        public void WriteBytes(ref Span<byte> bytes)
         {
-            cursor = cursor.Move(NetworkBitConverter.WriteUnaligned(cursor.Destination, code, 2));
+            var writtenLength = NetworkBitConverter.WriteUnaligned(bytes, code, 2);
+
+            bytes = bytes.Slice(writtenLength);
         }
 
-        public static Cipher TLS_AES_128_GCM_SHA256 { get; } = new Cipher(4865);
+        public static Cipher TLS_AES_128_GCM_SHA256 { get; } = new Cipher(0x1301);
 
         public bool Equals(Cipher other)
         {

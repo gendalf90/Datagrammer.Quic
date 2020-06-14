@@ -28,41 +28,43 @@ namespace Datagrammer.Quic.Protocol.Tls
             return afterLengthBytes.Slice(0, length);
         }
 
-        public static WritingContext StartVectorWriting(Span<byte> bytes, Range range)
+        public static WritingContext StartVectorWriting(ref Span<byte> bytes, Range range)
         {
             var context = new WritingContext(bytes, range);
             var lengthSizeInBytes = NetworkBitConverter.GetByteLength((ulong)range.End.Value);
 
-            context.Cursor = context.Cursor.Move(lengthSizeInBytes);
+            if(bytes.Length < lengthSizeInBytes)
+            {
+                throw new EncodingException();
+            }
+
+            bytes = bytes.Slice(lengthSizeInBytes);
 
             return context;
         }
 
-        public ref struct WritingContext
+        public readonly ref struct WritingContext
         {
-            private Span<byte> start;
-            private Range range;
+            private readonly Span<byte> start;
+            private readonly Range range;
 
             public WritingContext(Span<byte> start, Range range)
             {
                 this.start = start;
                 this.range = range;
-
-                Cursor = new WritingCursor(start, 0);
             }
 
-            public WritingCursor Cursor { get; set; }
-
-            public int Complete()
+            public void Complete(ref Span<byte> bytes)
             {
+                var offset = start.Length - bytes.Length;
                 var lengthSizeInBytes = NetworkBitConverter.GetByteLength((ulong)range.End.Value);
 
-                if (Cursor.Offset < lengthSizeInBytes)
+                if (offset < lengthSizeInBytes)
                 {
                     throw new EncodingException();
                 }
 
-                var payloadLength = Cursor.Offset - lengthSizeInBytes;
+                var payloadLength = offset - lengthSizeInBytes;
 
                 if (payloadLength < range.Start.Value || payloadLength > range.End.Value)
                 {
@@ -70,8 +72,6 @@ namespace Datagrammer.Quic.Protocol.Tls
                 }
 
                 NetworkBitConverter.WriteUnaligned(start, (ulong)payloadLength, lengthSizeInBytes);
-
-                return Cursor.Offset;
             }
         }
     }

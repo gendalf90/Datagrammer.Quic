@@ -56,7 +56,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             return new PacketToken(tokenBytes);
         }
 
-        public void WriteBytes(Span<byte> destination, out Span<byte> remainings)
+        public void WriteBytes(ref Span<byte> destination)
         {
             VariableLengthEncoding.Encode(destination, (ulong)bytes.Length, out var encodedLength);
 
@@ -67,7 +67,7 @@ namespace Datagrammer.Quic.Protocol.Packet
                 throw new EncodingException();
             }
 
-            remainings = afterLengthBytes.Slice(bytes.Length);
+            destination = afterLengthBytes.Slice(bytes.Length);
         }
     }
 }

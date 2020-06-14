@@ -2,29 +2,22 @@
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
-    public ref struct HandshakeWritingContext
+    public readonly ref struct HandshakeWritingContext
     {
-        private HandshakeLength.WritingContext payloadContext;
-        private ByteVector.WritingContext vectorContext;
+        private readonly HandshakeLength.WritingContext payloadContext;
+        private readonly ByteVector.WritingContext vectorContext;
 
         public HandshakeWritingContext(HandshakeLength.WritingContext payloadContext,
                                        ByteVector.WritingContext vectorContext)
         {
             this.payloadContext = payloadContext;
             this.vectorContext = vectorContext;
-
-            Cursor = vectorContext.Cursor;
         }
 
-        public WritingCursor Cursor { get; set; }
-
-        public void Complete(out Span<byte> remainings)
+        public void Complete(ref Span<byte> bytes)
         {
-            payloadContext.Cursor = payloadContext.Cursor.Move(vectorContext.Complete());
-
-            payloadContext.Complete();
-
-            remainings = payloadContext.Cursor.Destination;
+            vectorContext.Complete(ref bytes);
+            payloadContext.Complete(ref bytes);
         }
     }
 }
