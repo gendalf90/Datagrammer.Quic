@@ -10,21 +10,26 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         private static readonly byte[] FinishedLable = Encoding.ASCII.GetBytes("tls13 finished");
 
-        private readonly HashAlgorithm algorithm;
+        private readonly KeyedHashAlgorithm algorithm;
         private readonly HashAlgorithmName name;
 
-        private Hash(HashAlgorithmName name, HashAlgorithm algorithm)
+        private Hash(HashAlgorithmName name, KeyedHashAlgorithm algorithm)
         {
             this.name = name;
             this.algorithm = algorithm;
         }
 
-        private static Hash Sha256 { get; } = new Hash(HashAlgorithmName.SHA256, SHA256.Create());
+        private static Hash Sha256 { get; } = new Hash(HashAlgorithmName.SHA256, new HMACSHA256());
 
-        //private ReadOnlySpan<byte> ComputeFinishedKey(ReadOnlySpan<byte> secret)
-        //{
-            
-        //}
+        private ReadOnlySpan<byte> ComputeKey(ReadOnlySpan<byte> secret, ReadOnlySpan<byte> label)
+        {
+            var result = new byte[algorithm.HashSize / 8];
+            var hkdfLabel = CreateHkdfLabel(label, ReadOnlySpan<byte>.Empty);
+
+            HKDF.Expand(name, secret, result, hkdfLabel);
+
+            return result;
+        }
 
         private ReadOnlySpan<byte> CreateHkdfLabel(ReadOnlySpan<byte> label, ReadOnlySpan<byte> context)
         {
