@@ -31,6 +31,18 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return true;
         }
 
+        public static void WriteSupported(ref Span<byte> destination)
+        {
+            ExtensionType.SupportedGroups.WriteBytes(ref destination);
+
+            var context = ExtensionVectorPayload.StartWriting(ref destination, 2..ushort.MaxValue);
+
+            NamedGroup.SECP256R1.WriteBytes(ref destination);
+            NamedGroup.X25519.WriteBytes(ref destination);
+
+            context.Complete(ref destination);
+        }
+
         public void WriteBytes(ref Span<byte> destination)
         {
             ExtensionType.SupportedGroups.WriteBytes(ref destination);

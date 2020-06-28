@@ -27,12 +27,14 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new NamedGroup(code);
         }
 
-        public int WriteBytes(Span<byte> bytes)
+        public void WriteBytes(ref Span<byte> bytes)
         {
-            return NetworkBitConverter.WriteUnaligned(bytes, code, 2);
+            bytes = bytes.Slice(NetworkBitConverter.WriteUnaligned(bytes, code, 2));
         }
 
         public static NamedGroup SECP256R1 { get; } = new NamedGroup(0x0017);
+
+        public static NamedGroup X25519 { get; } = new NamedGroup(0x001D);
 
         public bool Equals(NamedGroup other)
         {

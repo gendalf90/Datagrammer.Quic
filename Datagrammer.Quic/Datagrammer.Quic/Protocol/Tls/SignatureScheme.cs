@@ -27,9 +27,9 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new SignatureScheme(code);
         }
 
-        public int WriteBytes(Span<byte> bytes)
+        public void WriteBytes(ref Span<byte> bytes)
         {
-            return NetworkBitConverter.WriteUnaligned(bytes, code, 2);
+            bytes = bytes.Slice(NetworkBitConverter.WriteUnaligned(bytes, code, 2));
         }
 
         public static SignatureScheme RSA_PSS_RSAE_SHA256 { get; } = new SignatureScheme(0x0804);

@@ -24,18 +24,26 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
                 return false;
             }
 
-            var payload = ExtensionVectorPayload.Slice(afterTypeBytes, 0..ushort.MaxValue, out remainings);
+            var payload = ExtensionPayload.Slice(afterTypeBytes, out remainings);
 
             result = new KeyShareExtension(payload);
 
             return true;
         }
 
+        //public void DoForClient()
+        //{
+        //}
+
+        //public void DoForServer()
+        //{
+        //}
+
         public void WriteBytes(ref Span<byte> destination)
         {
             ExtensionType.KeyShare.WriteBytes(ref destination);
 
-            var context = ExtensionVectorPayload.StartWriting(ref destination, 0..ushort.MaxValue);
+            var context = ExtensionPayload.StartWriting(ref destination);
 
             if (!bytes.Span.TryCopyTo(destination))
             {

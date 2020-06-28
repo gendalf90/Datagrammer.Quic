@@ -4,6 +4,7 @@ using Datagrammer.Quic.Protocol.Packet.Frame;
 using Datagrammer.Quic.Protocol.Tls;
 using Datagrammer.Quic.Protocol.Tls.Extensions;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -17,6 +18,13 @@ namespace Tests
         [Fact]
         public void Test1()
         {
+            var secret = Parse("ff0e5b965291c608c1e8cd267eefc0afcc5e98a2786373f0db47b04786d72aea");
+            var hash = Parse("22844b930e5e0a59a09d5ac35fc032fc91163b193874a265236e568077378d8b");
+            var expected = Parse("976017a77ae47f1658e28f7085fe37d149d1e9c91f56e1aebbe0c6bb054bd92b");
+
+            var verifyData = Hash.Sha256.CreateVerifyData(secret, hash);
+            var result = verifyData.Span.SequenceEqual(expected);
+
             var bytes = GetData();
 
             InitialPacket.TryParse(bytes, out var initial, out var remainings);
@@ -128,6 +136,23 @@ namespace Tests
                 .Split(new string[] { " ", Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(bStr => byte.Parse(bStr, NumberStyles.HexNumber))
                 .ToArray();
+        }
+
+        static byte[] Parse(string str)
+        {
+            var chars = str.AsSpan();
+            var bytes = new List<byte>();
+
+            while(!chars.IsEmpty)
+            {
+                var b = chars.Slice(0, 2);
+
+                bytes.Add(byte.Parse(b, NumberStyles.HexNumber));
+
+                chars = chars.Slice(2);
+            }
+
+            return bytes.ToArray();
         }
     }
 }

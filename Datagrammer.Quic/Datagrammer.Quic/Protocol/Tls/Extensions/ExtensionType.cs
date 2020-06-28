@@ -36,13 +36,13 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
 
         public static ExtensionType SupportedVersions { get; } = new ExtensionType(43); //0x2b
 
-        public static ExtensionType SignatureAlgorithms { get; } = new ExtensionType(13);
+        public static ExtensionType SignatureAlgorithms { get; } = new ExtensionType(13); //0xd
 
         public static ExtensionType ApplicationLayerProtocolNegotiation { get; } = new ExtensionType(16);
 
-        public static ExtensionType SupportedGroups { get; } = new ExtensionType(10);
+        public static ExtensionType SupportedGroups { get; } = new ExtensionType(10); //0xa
 
-        public static ExtensionType PskKeyExchangeModes { get; } = new ExtensionType(45);
+        public static ExtensionType PskKeyExchangeModes { get; } = new ExtensionType(45); //0x2d
 
         public static ExtensionType KeyShare { get; } = new ExtensionType(51); //0x33
 

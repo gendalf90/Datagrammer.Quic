@@ -37,9 +37,9 @@ namespace Datagrammer.Quic.Protocol.Tls
             bytes = bytes.Slice(1);
         }
 
-        public static HandshakeType ClientHello { get; } = new HandshakeType(1);
+        public static HandshakeType ClientHello { get; } = new HandshakeType(1); //0x1
 
-        public static HandshakeType Finished { get; } = new HandshakeType(20);
+        public static HandshakeType Finished { get; } = new HandshakeType(20); //0x14
 
         public bool Equals(HandshakeType other)
         {

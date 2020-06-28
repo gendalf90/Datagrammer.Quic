@@ -15,6 +15,11 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             this.bytes = bytes;
         }
 
+        private PskKeyExchangeModesExtension(byte mode)
+        {
+            bytes = new byte[] { mode };
+        }
+
         public static bool TryParse(ReadOnlyMemory<byte> bytes, out PskKeyExchangeModesExtension result, out ReadOnlyMemory<byte> remainings)
         {
             result = new PskKeyExchangeModesExtension();
@@ -33,6 +38,8 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
 
             return true;
         }
+
+        public static PskKeyExchangeModesExtension PskDheKe { get; } = new PskKeyExchangeModesExtension(PskDheKeMode);
 
         public void WriteBytes(ref Span<byte> destination)
         {

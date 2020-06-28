@@ -31,6 +31,19 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return true;
         }
 
+        public static void WriteSupported(ref Span<byte> destination)
+        {
+            ExtensionType.SignatureAlgorithms.WriteBytes(ref destination);
+
+            var context = ExtensionVectorPayload.StartWriting(ref destination, 0..ushort.MaxValue);
+
+            SignatureScheme.RSA_PKCS1_SHA256.WriteBytes(ref destination);
+            SignatureScheme.RSA_PSS_RSAE_SHA256.WriteBytes(ref destination);
+            SignatureScheme.ECDSA_SECP256R1_SHA256.WriteBytes(ref destination);
+
+            context.Complete(ref destination);
+        }
+
         public void WriteBytes(ref Span<byte> destination)
         {
             ExtensionType.SignatureAlgorithms.WriteBytes(ref destination);
