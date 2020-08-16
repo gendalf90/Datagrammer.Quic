@@ -34,6 +34,8 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             bytes = bytes.Slice(writtenLength);
         }
 
+        public static ExtensionType ServerName { get; } = new ExtensionType(0);
+
         public static ExtensionType SupportedVersions { get; } = new ExtensionType(43); //0x2b
 
         public static ExtensionType SignatureAlgorithms { get; } = new ExtensionType(13); //0xd

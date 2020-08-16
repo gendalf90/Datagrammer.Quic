@@ -36,6 +36,10 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static Cipher TLS_AES_128_GCM_SHA256 { get; } = new Cipher(0x1301);
 
+        public static Cipher TLS_AES_256_GCM_SHA384 { get; } = new Cipher(0x1302);
+
+        public static Cipher TLS_CHACHA20_POLY1305_SHA256 { get; } = new Cipher(0x1303);
+
         public bool Equals(Cipher other)
         {
             return code == other.code;

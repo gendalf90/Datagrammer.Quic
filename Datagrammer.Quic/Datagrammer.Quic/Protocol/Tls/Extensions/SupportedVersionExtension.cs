@@ -31,6 +31,18 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return true;
         }
 
+        public bool HasSelectedSupportedVersion()
+        {
+            var version = ProtocolVersion.Parse(bytes, out var remainings);
+
+            if(!remainings.IsEmpty)
+            {
+                throw new EncodingException();
+            }
+
+            return version == ProtocolVersion.Tls13;
+        }
+
         public bool TrySelectOneSupportedFromList(out SupportedVersionExtension result)
         {
             var versionList = ByteVector.SliceVectorBytes(bytes, 2..254, out var remainings);

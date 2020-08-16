@@ -38,6 +38,18 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static SignatureScheme ECDSA_SECP256R1_SHA256 { get; } = new SignatureScheme(0x0403);
 
+        public static SignatureScheme ECDSA_SECP384R1_SHA384 { get; } = new SignatureScheme(0x0503);
+
+        public static SignatureScheme RSA_PSS_RSAE_SHA384 { get; } = new SignatureScheme(0x0805);
+
+        public static SignatureScheme RSA_PKCS1_SHA386 { get; } = new SignatureScheme(0x0501);
+
+        public static SignatureScheme RSA_PSS_RSAE_SHA512 { get; } = new SignatureScheme(0x0806);
+
+        public static SignatureScheme RSA_PKCS1_SHA512 { get; } = new SignatureScheme(0x0601);
+
+        public static SignatureScheme RSA_PKCS1_SHA1 { get; } = new SignatureScheme(0x0201);
+
         public bool Equals(SignatureScheme other)
         {
             return code == other.code;

@@ -3,9 +3,9 @@ using System;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
-    public readonly struct ClientHello
+    public readonly struct ServerHello
     {
-        private ClientHello(HandshakeRandom random,
+        private ServerHello(HandshakeRandom random,
                             CipherSuite cipherSuite,
                             SessionId sessionId,
                             ReadOnlyMemory<byte> payload)
@@ -24,9 +24,9 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public ReadOnlyMemory<byte> Payload { get; }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out ClientHello result, out ReadOnlyMemory<byte> remainings)
+        public static bool TryParse(ReadOnlyMemory<byte> bytes, out ServerHello result, out ReadOnlyMemory<byte> remainings)
         {
-            result = new ClientHello();
+            result = new ServerHello();
             remainings = bytes;
 
             if (bytes.IsEmpty)
@@ -36,12 +36,12 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             var type = HandshakeType.Parse(bytes, out var afterTypeBytes);
 
-            if(type != HandshakeType.ClientHello)
+            if(type != HandshakeType.ServerHello)
             {
                 return false;
             }
 
-            var body = HandshakeLength.SliceHandshakeBytes(afterTypeBytes, out var afterBodyBytes);
+            var body = HandshakeLength.SliceHandshakeBytes(afterTypeBytes, out remainings);
             var legacyVersion = ProtocolVersion.Parse(body, out var afterLegacyVersionBytes);
 
             if(legacyVersion != ProtocolVersion.Tls12)
@@ -51,9 +51,9 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             var random = HandshakeRandom.Parse(afterLegacyVersionBytes, out var afterRandomBytes);
             var sessionId = SessionId.Parse(afterRandomBytes, out var afterSessionIdBytes);
-            var cipherSuite = CipherSuite.ParseList(afterSessionIdBytes, out var afterCipherSuiteBytes);
+            var cipherSuite = CipherSuite.Parse(afterSessionIdBytes, out var afterCipherSuiteBytes);
 
-            if (!CompressionMethod.CheckForEmptyList(afterCipherSuiteBytes, out var afterCompressionMethodBytes))
+            if(!CompressionMethod.CheckForEmptyValue(afterCipherSuiteBytes, out var afterCompressionMethodBytes))
             {
                 throw new EncodingException();
             }
@@ -65,8 +65,7 @@ namespace Datagrammer.Quic.Protocol.Tls
                 throw new EncodingException();
             }
 
-            result = new ClientHello(random, cipherSuite, sessionId, extensionBytes);
-            remainings = afterBodyBytes;
+            result = new ServerHello(random, cipherSuite, sessionId, extensionBytes);
 
             return true;
         }
@@ -84,7 +83,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             random.WriteBytes(ref destination);
             sessionId.WriteBytes(ref destination);
             cipherSuite.WriteBytes(ref destination);
-            CompressionMethod.WriteEmptyList(ref destination);
+            CompressionMethod.WriteEmptyValue(ref destination);
 
             var extensionsContext = ByteVector.StartVectorWriting(ref destination, 0..ushort.MaxValue);
 

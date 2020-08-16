@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="Datagrammer" Version="7.0.2-preview" />
+    <PackageReference Include="Portable.BouncyCastle" Version="1.8.6.7" />
   </ItemGroup>
 
 </Project>

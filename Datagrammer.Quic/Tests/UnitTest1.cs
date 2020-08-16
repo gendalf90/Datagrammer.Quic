@@ -3,12 +3,15 @@ using Datagrammer.Quic.Protocol.Packet;
 using Datagrammer.Quic.Protocol.Packet.Frame;
 using Datagrammer.Quic.Protocol.Tls;
 using Datagrammer.Quic.Protocol.Tls.Extensions;
+using Org.BouncyCastle.Math.EC.Rfc7748;
+using Org.BouncyCastle.Security;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
 using Xunit;
 
 namespace Tests
@@ -18,6 +21,18 @@ namespace Tests
         [Fact]
         public void Test1()
         {
+            var snBuff = new byte[100];
+            var snIter = snBuff.AsSpan();
+            ServerNameExtension.WriteHostName(ref snIter, "example.ulfheim.net");
+            var snResult = Parse(snBuff.AsSpan().Slice(0, snBuff.Length - snIter.Length).ToArray());
+
+            var keyShareBuff = new byte[1000];
+            var keyShareSpan = keyShareBuff.AsSpan();
+            var privateKey = Parse("202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f");
+            var publicKey = NamedGroup.X25519.GeneratePublicKey(privateKey);
+            KeyShareExtension.WriteClientEntry(ref keyShareSpan, NamedGroup.X25519, publicKey);
+            var keyShareData = Parse(keyShareBuff.AsSpan().Slice(0, keyShareBuff.Length - keyShareSpan.Length).ToArray());
+
             var secret = Parse("ff0e5b965291c608c1e8cd267eefc0afcc5e98a2786373f0db47b04786d72aea");
             var hash = Parse("22844b930e5e0a59a09d5ac35fc032fc91163b193874a265236e568077378d8b");
             var expected = Parse("976017a77ae47f1658e28f7085fe37d149d1e9c91f56e1aebbe0c6bb054bd92b");
@@ -153,6 +168,18 @@ namespace Tests
             }
 
             return bytes.ToArray();
+        }
+
+        static string Parse(byte[] bytes)
+        {
+            var result = new StringBuilder();
+
+            foreach(var b in bytes)
+            {
+                result.Append(b.ToString("X2"));
+            }
+
+            return result.ToString();
         }
     }
 }

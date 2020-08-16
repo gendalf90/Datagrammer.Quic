@@ -5,6 +5,11 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
 {
     public readonly struct SupportedGroupsExtension
     {
+        private static NamedGroup[] supported =
+        {
+            NamedGroup.X25519
+        };
+
         private readonly ReadOnlyMemory<byte> bytes;
 
         private SupportedGroupsExtension(ReadOnlyMemory<byte> bytes)
@@ -23,7 +28,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             {
                 return false;
             }
-
+            
             var payload = ExtensionVectorPayload.Slice(afterTypeBytes, 2..ushort.MaxValue, out remainings);
 
             result = new SupportedGroupsExtension(payload);
@@ -31,16 +36,23 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return true;
         }
 
-        public static void WriteSupported(ref Span<byte> destination)
+        public static void WriteFromList(ref Span<byte> destination, params NamedGroup[] groups)
         {
             ExtensionType.SupportedGroups.WriteBytes(ref destination);
 
             var context = ExtensionVectorPayload.StartWriting(ref destination, 2..ushort.MaxValue);
 
-            NamedGroup.SECP256R1.WriteBytes(ref destination);
-            NamedGroup.X25519.WriteBytes(ref destination);
+            for(int i = 0; i < groups.Length; i++)
+            {
+                groups[i].WriteBytes(ref destination);
+            }
 
             context.Complete(ref destination);
+        }
+
+        public static void WriteSupported(ref Span<byte> destination)
+        {
+            WriteFromList(ref destination, supported);
         }
 
         public void WriteBytes(ref Span<byte> destination)
