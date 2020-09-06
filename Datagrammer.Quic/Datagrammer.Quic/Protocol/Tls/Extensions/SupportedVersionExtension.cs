@@ -63,6 +63,16 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             }
         }
 
+        public static SupportedVersionExtension CreateFromSingle(ProtocolVersion version)
+        {
+            using (var stream = new MemoryStream())
+            {
+                version.WriteBytes(stream);
+
+                return new SupportedVersionExtension(stream.ToArray(), false);
+            }
+        }
+
         public void Write(ref Span<byte> destination)
         {
             ExtensionType.SupportedVersions.WriteBytes(ref destination);

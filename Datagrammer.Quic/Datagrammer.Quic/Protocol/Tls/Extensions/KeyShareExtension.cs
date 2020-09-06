@@ -29,6 +29,16 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             }
         }
 
+        public static KeyShareExtension CreateFromEntry(KeyShareEntry entry)
+        {
+            using (var stream = new MemoryStream())
+            {
+                entry.Write(stream);
+
+                return new KeyShareExtension(stream.ToArray(), false);
+            }
+        }
+
         public static KeyShareExtension CreatePrivateKeys(ReadOnlySpan<NamedGroup> groups)
         {
             using (var stream = new MemoryStream())

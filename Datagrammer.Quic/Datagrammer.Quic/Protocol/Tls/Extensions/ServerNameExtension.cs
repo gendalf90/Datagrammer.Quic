@@ -66,9 +66,9 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
 
                 destination = destination.Slice(writtenBytes);
             }
-            catch
+            catch (Exception e)
             {
-                throw new EncodingException();
+                throw new EncodingException("", e);
             }
 
             context.Complete(ref destination);

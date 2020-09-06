@@ -19,6 +19,11 @@ namespace Datagrammer.Quic.Protocol.Tls
             [0x001D] = GenerateX25519PublicKey
         };
 
+        private static Dictionary<ushort, Func<byte[], byte[], byte[]>> sharedSecretGenerators = new Dictionary<ushort, Func<byte[], byte[], byte[]>>
+        {
+            [0x001D] = GenerateX25519SharedSecret
+        };
+
         private readonly ushort code;
 
         private NamedGroup(ushort code)
@@ -79,6 +84,16 @@ namespace Datagrammer.Quic.Protocol.Tls
             throw new NotSupportedException();
         }
 
+        public ReadOnlyMemory<byte> GenerateSharedSecret(ReadOnlyMemory<byte> privateKey, ReadOnlyMemory<byte> publicKey)
+        {
+            if (sharedSecretGenerators.TryGetValue(code, out var generator))
+            {
+                return generator(privateKey.ToArray(), publicKey.ToArray());
+            }
+
+            throw new NotSupportedException();
+        }
+
         private static byte[] GenerateX25519PrivateKey()
         {
             var buffer = new byte[CurveX25519.ScalarSize];
@@ -93,6 +108,15 @@ namespace Datagrammer.Quic.Protocol.Tls
             var buffer = new byte[CurveX25519.ScalarSize];
 
             CurveX25519.GeneratePublicKey(privateKey, 0, buffer, 0);
+
+            return buffer;
+        }
+
+        private static byte[] GenerateX25519SharedSecret(byte[] privateKey, byte[] publicKey)
+        {
+            var buffer = new byte[CurveX25519.ScalarSize];
+
+            CurveX25519.ScalarMult(privateKey, 0, publicKey, 0, buffer, 0);
 
             return buffer;
         }

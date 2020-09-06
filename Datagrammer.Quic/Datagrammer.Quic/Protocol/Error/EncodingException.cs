@@ -3,7 +3,7 @@ using System.Runtime.Serialization;
 
 namespace Datagrammer.Quic.Protocol.Error
 {
-    public class EncodingException : Exception
+    public class EncodingException : ApplicationException
     {
         public EncodingException()
         {

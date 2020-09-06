@@ -30,6 +30,16 @@ namespace Datagrammer.Quic.Protocol.Tls
             }
         }
 
+        public static CipherSuite CreateFromSingle(Cipher cipher)
+        {
+            using (var stream = new MemoryStream())
+            {
+                cipher.WriteBytes(stream);
+
+                return new CipherSuite(stream.ToArray(), false);
+            }
+        }
+
         public bool TrySelectOneCipherFromList(IEnumerable<Cipher> ciphers, out CipherSuite result)
         {
             var remainings = bytes;

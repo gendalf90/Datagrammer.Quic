@@ -75,7 +75,7 @@ namespace Datagrammer.Quic.Protocol.Tls
                                                             CipherSuite cipherSuite,
                                                             SessionId sessionId)
         {
-            HandshakeType.ClientHello.WriteBytes(ref destination);
+            HandshakeType.ServerHello.WriteBytes(ref destination);
 
             var payloadContext = HandshakeLength.StartWriting(ref destination);
 
