@@ -83,7 +83,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             ProtocolVersion.Tls12.WriteBytes(ref destination);
             random.WriteBytes(ref destination);
             sessionId.WriteBytes(ref destination);
-            cipherSuite.WriteBytes(ref destination);
+            cipherSuite.Write(ref destination);
             CompressionMethod.WriteEmptyList(ref destination);
 
             var extensionsContext = ByteVector.StartVectorWriting(ref destination, 0..ushort.MaxValue);

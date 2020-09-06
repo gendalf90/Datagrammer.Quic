@@ -1,5 +1,7 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
 using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
@@ -34,11 +36,18 @@ namespace Datagrammer.Quic.Protocol.Tls
             bytes = bytes.Slice(writtenLength);
         }
 
+        public void WriteBytes(Stream stream)
+        {
+            NetworkBitConverter.WriteUnaligned(stream, code, 2);
+        }
+
         public static Cipher TLS_AES_128_GCM_SHA256 { get; } = new Cipher(0x1301);
 
         public static Cipher TLS_AES_256_GCM_SHA384 { get; } = new Cipher(0x1302);
 
         public static Cipher TLS_CHACHA20_POLY1305_SHA256 { get; } = new Cipher(0x1303);
+
+        public static IEnumerable<Cipher> Supported { get; } = new HashSet<Cipher> { TLS_AES_128_GCM_SHA256 };
 
         public bool Equals(Cipher other)
         {

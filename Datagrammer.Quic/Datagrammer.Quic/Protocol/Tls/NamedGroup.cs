@@ -1,30 +1,34 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
 using Org.BouncyCastle.Security;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using CurveX25519 = Org.BouncyCastle.Math.EC.Rfc7748.X25519;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
-    public class NamedGroup : IEquatable<NamedGroup>
+    public readonly struct NamedGroup : IEquatable<NamedGroup>
     {
-        private readonly ushort code;
-        private readonly Func<byte[]> privateKeyStrategy;
-        private readonly Func<byte[], byte[]> publicKeyStrategy;
+        private static Dictionary<ushort, Func<byte[]>> privateKeyGenerators = new Dictionary<ushort, Func<byte[]>>
+        {
+            [0x001D] = GenerateX25519PrivateKey
+        };
 
-        private NamedGroup(
-            ushort code, 
-            Func<byte[]> privateKeyStrategy,
-            Func<byte[], byte[]> publicKeyStrategy)
+        private static Dictionary<ushort, Func<byte[], byte[]>> publicKeyGenerators = new Dictionary<ushort, Func<byte[], byte[]>>
+        {
+            [0x001D] = GenerateX25519PublicKey
+        };
+
+        private readonly ushort code;
+
+        private NamedGroup(ushort code)
         {
             this.code = code;
-            this.privateKeyStrategy = privateKeyStrategy;
-            this.publicKeyStrategy = publicKeyStrategy;
         }
 
-        public bool TrySliceBytes(ref ReadOnlyMemory<byte> bytes)
+        public static NamedGroup Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
-            if(bytes.Length < 2)
+            if (bytes.Length < 2)
             {
                 throw new EncodingException();
             }
@@ -32,24 +36,9 @@ namespace Datagrammer.Quic.Protocol.Tls
             var codeBytes = bytes.Slice(0, 2);
             var code = (ushort)NetworkBitConverter.ParseUnaligned(codeBytes.Span);
 
-            if(this.code != code)
-            {
-                return false;
-            }
+            remainings = bytes.Slice(2);
 
-            bytes = bytes.Slice(2);
-
-            return true;
-        }
-
-        public static void SliceBytes(ref ReadOnlyMemory<byte> bytes)
-        {
-            if (bytes.Length < 2)
-            {
-                throw new EncodingException();
-            }
-
-            bytes = bytes.Slice(2);
+            return new NamedGroup(code);
         }
 
         public void WriteBytes(Stream stream)
@@ -62,20 +51,32 @@ namespace Datagrammer.Quic.Protocol.Tls
             bytes = bytes.Slice(NetworkBitConverter.WriteUnaligned(bytes, code, 2));
         }
 
-        public static NamedGroup X25519 { get; } = new NamedGroup(0x001D, GenerateX25519PrivateKey, GenerateX25519PublicKey);
+        public static NamedGroup X25519 { get; } = new NamedGroup(0x001D);
 
-        public static NamedGroup SECP256R1 { get; } = new NamedGroup(0x0017, () => throw new NotImplementedException(), _ => throw new NotImplementedException());
+        public static NamedGroup SECP256R1 { get; } = new NamedGroup(0x0017);
 
-        public static NamedGroup SECP384R1 { get; } = new NamedGroup(0x0018, () => throw new NotImplementedException(), _ => throw new NotImplementedException());
+        public static NamedGroup SECP384R1 { get; } = new NamedGroup(0x0018);
+
+        public static IEnumerable<NamedGroup> Supported { get; } = new HashSet<NamedGroup> { X25519 };
 
         public ReadOnlyMemory<byte> GeneratePrivateKey()
         {
-            return privateKeyStrategy();
+            if (privateKeyGenerators.TryGetValue(code, out var generator))
+            {
+                return generator();
+            }
+
+            throw new NotSupportedException();
         }
 
         public ReadOnlyMemory<byte> GeneratePublicKey(ReadOnlyMemory<byte> privateKey)
         {
-            return publicKeyStrategy(privateKey.ToArray());
+            if (publicKeyGenerators.TryGetValue(code, out var generator))
+            {
+                return generator(privateKey.ToArray());
+            }
+
+            throw new NotSupportedException();
         }
 
         private static byte[] GenerateX25519PrivateKey()

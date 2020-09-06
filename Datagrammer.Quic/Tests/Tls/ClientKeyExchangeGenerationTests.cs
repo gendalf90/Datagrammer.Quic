@@ -19,7 +19,7 @@ namespace Tests.Tls
             {
                 privateKeys.Add(NamedGroup.X25519.GeneratePrivateKey().ToArray());
             }
-
+            
             //Assert
             Assert.True(privateKeys.TrueForAll(key => key.Length == 32));
             Assert.Equal(count, privateKeys

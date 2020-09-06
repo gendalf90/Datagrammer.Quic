@@ -1,109 +1,103 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
 using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace Datagrammer.Quic.Protocol.Tls.Extensions
 {
     public readonly struct SupportedVersionExtension
     {
         private readonly ReadOnlyMemory<byte> bytes;
+        private readonly bool isList;
 
-        private SupportedVersionExtension(ReadOnlyMemory<byte> bytes)
+        private SupportedVersionExtension(ReadOnlyMemory<byte> bytes, bool isList)
         {
             this.bytes = bytes;
+            this.isList = isList;
         }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out SupportedVersionExtension result, out ReadOnlyMemory<byte> remainings)
+        public static bool TryParseList(ReadOnlyMemory<byte> bytes, out SupportedVersionExtension result, out ReadOnlyMemory<byte> remainings)
         {
             result = new SupportedVersionExtension();
             remainings = bytes;
 
-            var type = ExtensionType.Parse(bytes, out var afterTypeBytes);
+            if (ExtensionType.Parse(bytes, out var afterTypeBytes) != ExtensionType.SupportedVersions)
+            {
+                return false;
+            }
 
-            if (type != ExtensionType.SupportedVersions)
+            var payload = ExtensionVectorPayload.Slice(afterTypeBytes, 2..254, out remainings);
+
+            result = new SupportedVersionExtension(payload, true);
+
+            return true;
+        }
+
+        public static bool TryParseSingle(ReadOnlyMemory<byte> bytes, out SupportedVersionExtension result, out ReadOnlyMemory<byte> remainings)
+        {
+            result = new SupportedVersionExtension();
+            remainings = bytes;
+
+            if (ExtensionType.Parse(bytes, out var afterTypeBytes) != ExtensionType.SupportedVersions)
             {
                 return false;
             }
 
             var payload = ExtensionPayload.Slice(afterTypeBytes, out remainings);
 
-            result = new SupportedVersionExtension(payload);
+            result = new SupportedVersionExtension(payload, false);
 
             return true;
         }
 
-        public bool HasSelectedSupportedVersion()
+        public static SupportedVersionExtension CreateFromList(IEnumerable<ProtocolVersion> versions)
         {
-            var version = ProtocolVersion.Parse(bytes, out var remainings);
-
-            if(!remainings.IsEmpty)
+            using (var stream = new MemoryStream())
             {
-                throw new EncodingException();
-            }
-
-            return version == ProtocolVersion.Tls13;
-        }
-
-        public bool TrySelectOneSupportedFromList(out SupportedVersionExtension result)
-        {
-            var versionList = ByteVector.SliceVectorBytes(bytes, 2..254, out var remainings);
-            
-            result = new SupportedVersionExtension();
-
-            if(!remainings.IsEmpty)
-            {
-                throw new EncodingException();
-            }
-
-            while(!versionList.IsEmpty)
-            {
-                if(TryParseSupportedVersion(versionList, out result, out versionList))
+                foreach (var version in versions)
                 {
-                    return true;
+                    version.WriteBytes(stream);
                 }
+
+                return new SupportedVersionExtension(stream.ToArray(), true);
             }
-
-            return false;
         }
 
-        private bool TryParseSupportedVersion(ReadOnlyMemory<byte> data, out SupportedVersionExtension result, out ReadOnlyMemory<byte> remainings)
-        {
-            result = new SupportedVersionExtension();
-
-            if(ProtocolVersion.Parse(data, out remainings) != ProtocolVersion.Tls13)
-            {
-                return false;
-            }
-
-            result = new SupportedVersionExtension(data.Slice(0, data.Length - remainings.Length));
-
-            return true;
-        }
-
-        public static void WriteSupportedList(ref Span<byte> destination)
-        {
-            ExtensionType.SupportedVersions.WriteBytes(ref destination);
-
-            var context = ExtensionVectorPayload.StartWriting(ref destination, 2..254);
-
-            ProtocolVersion.Tls13.WriteBytes(ref destination);
-
-            context.Complete(ref destination);
-        }
-
-        public void WriteBytes(ref Span<byte> destination)
+        public void Write(ref Span<byte> destination)
         {
             ExtensionType.SupportedVersions.WriteBytes(ref destination);
 
             var context = ExtensionPayload.StartWriting(ref destination);
 
+            if (isList)
+            {
+                WriteVector(ref destination);
+            }
+            else
+            {
+                WriteBytes(ref destination);
+            }
+
+            context.Complete(ref destination);
+        }
+
+        private void WriteBytes(ref Span<byte> destination)
+        {
             if (!bytes.Span.TryCopyTo(destination))
             {
                 throw new EncodingException();
             }
 
             destination = destination.Slice(bytes.Length);
+        }
 
-            context.Complete(ref destination);
+        private void WriteVector(ref Span<byte> destination)
+        {
+            var vectorContext = ByteVector.StartVectorWriting(ref destination, 2..254);
+
+            WriteBytes(ref destination);
+
+            vectorContext.Complete(ref destination);
         }
 
         public override string ToString()

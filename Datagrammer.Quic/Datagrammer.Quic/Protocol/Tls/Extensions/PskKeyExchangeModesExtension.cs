@@ -5,19 +5,14 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
 {
     public readonly struct PskKeyExchangeModesExtension
     {
-        private const byte PskKeMode = 0;
-        private const byte PskDheKeMode = 1;
+        //private const byte PskKeMode = 0;
+        private static readonly byte[] PskDheKeMode = { 1 };
 
         private readonly ReadOnlyMemory<byte> bytes;
 
         private PskKeyExchangeModesExtension(ReadOnlyMemory<byte> bytes)
         {
             this.bytes = bytes;
-        }
-
-        private PskKeyExchangeModesExtension(byte mode)
-        {
-            bytes = new byte[] { mode };
         }
 
         public static bool TryParse(ReadOnlyMemory<byte> bytes, out PskKeyExchangeModesExtension result, out ReadOnlyMemory<byte> remainings)

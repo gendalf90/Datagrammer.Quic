@@ -1,5 +1,4 @@
-﻿using Datagrammer.Quic.Protocol.Error;
-using System;
+﻿using System;
 
 namespace Datagrammer.Quic.Protocol.Packet.Frame
 {

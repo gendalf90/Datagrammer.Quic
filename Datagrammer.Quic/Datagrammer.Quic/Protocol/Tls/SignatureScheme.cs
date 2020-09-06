@@ -1,5 +1,6 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
 using System;
+using System.Collections.Generic;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
@@ -49,6 +50,8 @@ namespace Datagrammer.Quic.Protocol.Tls
         public static SignatureScheme RSA_PKCS1_SHA512 { get; } = new SignatureScheme(0x0601);
 
         public static SignatureScheme RSA_PKCS1_SHA1 { get; } = new SignatureScheme(0x0201);
+
+        public static IEnumerable<SignatureScheme> Supported { get; } = new HashSet<SignatureScheme> { RSA_PKCS1_SHA256, RSA_PSS_RSAE_SHA256, ECDSA_SECP256R1_SHA256 };
 
         public bool Equals(SignatureScheme other)
         {

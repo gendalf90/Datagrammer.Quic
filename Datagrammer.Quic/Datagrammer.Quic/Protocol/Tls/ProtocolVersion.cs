@@ -1,5 +1,6 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
 using System;
+using System.IO;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
@@ -39,9 +40,17 @@ namespace Datagrammer.Quic.Protocol.Tls
             bytes = bytes.Slice(2);
         }
 
+        public void WriteBytes(Stream stream)
+        {
+            stream.WriteByte((byte)(version >> 8 & byte.MaxValue));
+            stream.WriteByte((byte)(version & byte.MaxValue));
+        }
+
         public static ProtocolVersion Tls12 { get; } = new ProtocolVersion(3 << 8 | 3);
 
         public static ProtocolVersion Tls13 { get; } = new ProtocolVersion(3 << 8 | 4);
+
+        public static ProtocolVersion Current { get; } = Tls13;
 
         public bool Equals(ProtocolVersion other)
         {

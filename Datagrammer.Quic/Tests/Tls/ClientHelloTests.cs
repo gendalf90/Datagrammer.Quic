@@ -14,7 +14,7 @@ namespace Tests.Tls
             var expectedBytes = GetResultHexString();
             var buffer = new byte[TlsBuffer.MaxRecordSize];
             var random = HandshakeRandom.Parse(GetBytesOfRandom(), out _);
-            var cipherSuite = CipherSuite.CreateFromList(Cipher.TLS_AES_128_GCM_SHA256, Cipher.TLS_AES_256_GCM_SHA384, Cipher.TLS_CHACHA20_POLY1305_SHA256);
+            var cipherSuite = CipherSuite.CreateFromList(new[] { Cipher.TLS_AES_128_GCM_SHA256, Cipher.TLS_AES_256_GCM_SHA384, Cipher.TLS_CHACHA20_POLY1305_SHA256 });
             var sessionId = SessionId.Parse(GetBytesOfSessionId(), out _);
 
             //Act
@@ -22,8 +22,9 @@ namespace Tests.Tls
             var context = ClientHello.StartWriting(ref cursor, random, cipherSuite, sessionId);
 
             ServerNameExtension.WriteHostName(ref cursor, "example.ulfheim.net");
-            SupportedGroupsExtension.WriteFromList(ref cursor, NamedGroup.X25519, NamedGroup.SECP256R1, NamedGroup.SECP384R1);
-            SignatureAlgorithmsExtension.WriteFromList(ref cursor,
+            SupportedGroupsExtension.WriteFromList(ref cursor, new[] { NamedGroup.X25519, NamedGroup.SECP256R1, NamedGroup.SECP384R1 });
+            SignatureAlgorithmsExtension.WriteFromList(ref cursor, new[]
+            {
                 SignatureScheme.ECDSA_SECP256R1_SHA256,
                 SignatureScheme.RSA_PSS_RSAE_SHA256,
                 SignatureScheme.RSA_PKCS1_SHA256,
@@ -32,14 +33,21 @@ namespace Tests.Tls
                 SignatureScheme.RSA_PKCS1_SHA386,
                 SignatureScheme.RSA_PSS_RSAE_SHA512,
                 SignatureScheme.RSA_PKCS1_SHA512,
-                SignatureScheme.RSA_PKCS1_SHA1);
+                SignatureScheme.RSA_PKCS1_SHA1
+            });
+            KeyShareExtension.CreateFromEntries(new[]
+            {
+                new KeyShareEntry(NamedGroup.X25519, GetBytesOfPublicKey())
+            }).Write(ref cursor);
+            PskKeyExchangeModesExtension.PskDheKe.WriteBytes(ref cursor);
+            SupportedVersionExtension.CreateFromList(new[] { ProtocolVersion.Tls13 }).Write(ref cursor);
 
             context.Complete(ref cursor);
 
             Array.Resize(ref buffer, buffer.Length - cursor.Length);
 
             //Assert
-            Assert.Equal(expectedBytes, Utils.ToHexString(buffer));
+            Assert.Equal(expectedBytes, Utils.ToHexString(buffer), true);
         }
 
         private string GetResultHexString()
@@ -55,6 +63,11 @@ namespace Tests.Tls
         private byte[] GetBytesOfSessionId()
         {
             return Utils.ParseHexString("20e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff");
+        }
+
+        private byte[] GetBytesOfPublicKey()
+        {
+            return Utils.ParseHexString("358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254");
         }
     }
 }

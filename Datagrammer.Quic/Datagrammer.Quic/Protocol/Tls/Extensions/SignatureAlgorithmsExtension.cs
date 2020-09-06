@@ -1,17 +1,11 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
 using System;
+using System.Collections.Generic;
 
 namespace Datagrammer.Quic.Protocol.Tls.Extensions
 {
     public readonly struct SignatureAlgorithmsExtension
     {
-        private static SignatureScheme[] supported =
-        {
-            SignatureScheme.RSA_PKCS1_SHA256,
-            SignatureScheme.RSA_PSS_RSAE_SHA256,
-            SignatureScheme.ECDSA_SECP256R1_SHA256
-        };
-
         private readonly ReadOnlyMemory<byte> bytes;
 
         private SignatureAlgorithmsExtension(ReadOnlyMemory<byte> bytes)
@@ -38,23 +32,18 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return true;
         }
 
-        public static void WriteFromList(ref Span<byte> destination, params SignatureScheme[] schemes)
+        public static void WriteFromList(ref Span<byte> destination, IEnumerable<SignatureScheme> schemes)
         {
             ExtensionType.SignatureAlgorithms.WriteBytes(ref destination);
 
             var context = ExtensionVectorPayload.StartWriting(ref destination, 0..ushort.MaxValue);
 
-            for(int i = 0; i < schemes.Length; i++)
+            foreach(var scheme in schemes)
             {
-                schemes[i].WriteBytes(ref destination);
+                scheme.WriteBytes(ref destination);
             }
 
             context.Complete(ref destination);
-        }
-
-        public static void WriteSupported(ref Span<byte> destination)
-        {
-            WriteFromList(ref destination, supported);
         }
 
         public void WriteBytes(ref Span<byte> destination)

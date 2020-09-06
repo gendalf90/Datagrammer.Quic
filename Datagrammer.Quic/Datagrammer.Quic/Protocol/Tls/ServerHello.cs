@@ -51,7 +51,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             var random = HandshakeRandom.Parse(afterLegacyVersionBytes, out var afterRandomBytes);
             var sessionId = SessionId.Parse(afterRandomBytes, out var afterSessionIdBytes);
-            var cipherSuite = CipherSuite.Parse(afterSessionIdBytes, out var afterCipherSuiteBytes);
+            var cipherSuite = CipherSuite.ParseOne(afterSessionIdBytes, out var afterCipherSuiteBytes);
 
             if(!CompressionMethod.CheckForEmptyValue(afterCipherSuiteBytes, out var afterCompressionMethodBytes))
             {
@@ -82,7 +82,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             ProtocolVersion.Tls12.WriteBytes(ref destination);
             random.WriteBytes(ref destination);
             sessionId.WriteBytes(ref destination);
-            cipherSuite.WriteBytes(ref destination);
+            cipherSuite.Write(ref destination);
             CompressionMethod.WriteEmptyValue(ref destination);
 
             var extensionsContext = ByteVector.StartVectorWriting(ref destination, 0..ushort.MaxValue);

@@ -1,5 +1,8 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
@@ -14,28 +17,26 @@ namespace Datagrammer.Quic.Protocol.Tls
             this.isList = isList;
         }
 
-        public static CipherSuite CreateFromList(params Cipher[] ciphers)
+        public static CipherSuite CreateFromList(IEnumerable<Cipher> ciphers)
         {
-            Span<byte> buffer = stackalloc byte[TlsBuffer.MaxRecordSize];
-            Span<byte> cursor = buffer;
-
-            for(int i = 0; i < ciphers.Length; i++)
+            using (var stream = new MemoryStream())
             {
-                ciphers[i].WriteBytes(ref cursor);
-            }
+                foreach (var cipher in ciphers)
+                {
+                    cipher.WriteBytes(stream);
+                }
 
-            return new CipherSuite(buffer.Slice(0, buffer.Length - cursor.Length).ToArray(), true);
+                return new CipherSuite(stream.ToArray(), true);
+            }
         }
 
-        public static CipherSuite SupportedList { get; } = CreateFromList(Cipher.TLS_AES_128_GCM_SHA256);
-
-        public bool TrySelectOneCipherFrom(CipherSuite cipherSuite, out CipherSuite result)
+        public bool TrySelectOneCipherFromList(IEnumerable<Cipher> ciphers, out CipherSuite result)
         {
             var remainings = bytes;
-
+            
             while (TryParseOneCipher(remainings, out var cipher, out result, out remainings))
             {
-                if(cipherSuite.Contains(cipher))
+                if(ciphers.Contains(cipher))
                 {
                     return true;
                 }
@@ -56,29 +57,14 @@ namespace Datagrammer.Quic.Protocol.Tls
             }
 
             cipher = Cipher.Parse(data, out remainings);
-            suite = new CipherSuite(bytes.Slice(0, bytes.Length - remainings.Length), false);
+            suite = new CipherSuite(data.Slice(0, data.Length - remainings.Length), false);
 
             return true;
         }
 
-        private bool Contains(Cipher cipher)
+        public bool HasAnyFrom(IEnumerable<Cipher> ciphers)
         {
-            var currentRemainings = bytes;
-
-            while (!currentRemainings.IsEmpty)
-            {
-                if(Cipher.Parse(currentRemainings, out currentRemainings) == cipher)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public bool HasAnyFrom(CipherSuite cipherSuite)
-        {
-            return TrySelectOneCipherFrom(cipherSuite, out _);
+            return TrySelectOneCipherFromList(ciphers, out _);
         }
 
         public static CipherSuite ParseList(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
@@ -88,7 +74,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new CipherSuite(data, true);
         }
 
-        public static CipherSuite Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static CipherSuite ParseOne(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             Cipher.Parse(bytes, out remainings);
 
@@ -107,7 +93,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             }
         }
 
-        public void WriteBytes(ref Span<byte> destination)
+        private void WriteBytes(ref Span<byte> destination)
         {
             if (!bytes.Span.TryCopyTo(destination))
             {
