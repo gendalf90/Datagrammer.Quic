@@ -1,27 +1,16 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
-using Org.BouncyCastle.Security;
+using Datagrammer.Quic.Protocol.Tls.Curves;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using CurveX25519 = Org.BouncyCastle.Math.EC.Rfc7748.X25519;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct NamedGroup : IEquatable<NamedGroup>
     {
-        private static Dictionary<ushort, Func<byte[]>> privateKeyGenerators = new Dictionary<ushort, Func<byte[]>>
+        private static Dictionary<ushort, ICurve> curves = new Dictionary<ushort, ICurve>
         {
-            [0x001D] = GenerateX25519PrivateKey
-        };
-
-        private static Dictionary<ushort, Func<byte[], byte[]>> publicKeyGenerators = new Dictionary<ushort, Func<byte[], byte[]>>
-        {
-            [0x001D] = GenerateX25519PublicKey
-        };
-
-        private static Dictionary<ushort, Func<byte[], byte[], byte[]>> sharedSecretGenerators = new Dictionary<ushort, Func<byte[], byte[], byte[]>>
-        {
-            [0x001D] = GenerateX25519SharedSecret
+            [0x001D] = new X25519()
         };
 
         private readonly ushort code;
@@ -64,61 +53,14 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static IEnumerable<NamedGroup> Supported { get; } = new HashSet<NamedGroup> { X25519 };
 
-        public ReadOnlyMemory<byte> GeneratePrivateKey()
+        public ICurve GetCurve()
         {
-            if (privateKeyGenerators.TryGetValue(code, out var generator))
+            if (curves.TryGetValue(code, out var curve))
             {
-                return generator();
+                return curve;
             }
 
             throw new NotSupportedException();
-        }
-
-        public ReadOnlyMemory<byte> GeneratePublicKey(ReadOnlyMemory<byte> privateKey)
-        {
-            if (publicKeyGenerators.TryGetValue(code, out var generator))
-            {
-                return generator(privateKey.ToArray());
-            }
-
-            throw new NotSupportedException();
-        }
-
-        public ReadOnlyMemory<byte> GenerateSharedSecret(ReadOnlyMemory<byte> privateKey, ReadOnlyMemory<byte> publicKey)
-        {
-            if (sharedSecretGenerators.TryGetValue(code, out var generator))
-            {
-                return generator(privateKey.ToArray(), publicKey.ToArray());
-            }
-
-            throw new NotSupportedException();
-        }
-
-        private static byte[] GenerateX25519PrivateKey()
-        {
-            var buffer = new byte[CurveX25519.ScalarSize];
-
-            CurveX25519.GeneratePrivateKey(new SecureRandom(), buffer);
-
-            return buffer;
-        }
-
-        private static byte[] GenerateX25519PublicKey(byte[] privateKey)
-        {
-            var buffer = new byte[CurveX25519.ScalarSize];
-
-            CurveX25519.GeneratePublicKey(privateKey, 0, buffer, 0);
-
-            return buffer;
-        }
-
-        private static byte[] GenerateX25519SharedSecret(byte[] privateKey, byte[] publicKey)
-        {
-            var buffer = new byte[CurveX25519.ScalarSize];
-
-            CurveX25519.ScalarMult(privateKey, 0, publicKey, 0, buffer, 0);
-
-            return buffer;
         }
 
         public bool Equals(NamedGroup other)

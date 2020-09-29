@@ -1,4 +1,6 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
+using Datagrammer.Quic.Protocol.Tls.Aeads;
+using Datagrammer.Quic.Protocol.Tls.Hashes;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,6 +9,17 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct Cipher : IEquatable<Cipher>
     {
+        private static Dictionary<ushort, IHash> hashes = new Dictionary<ushort, IHash>
+        {
+            [0x1301] = Hash.Sha256,
+            [0x1303] = Hash.Sha256
+        };
+
+        private static Dictionary<ushort, Func<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>, IAead>> aeadFactories = new Dictionary<ushort, Func<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>, IAead>>
+        {
+            [0x1301] = (iv, key) => new AesGcmAead(iv, key)
+        };
+
         private readonly ushort code;
 
         private Cipher(ushort code)
@@ -48,6 +61,26 @@ namespace Datagrammer.Quic.Protocol.Tls
         public static Cipher TLS_CHACHA20_POLY1305_SHA256 { get; } = new Cipher(0x1303);
 
         public static IEnumerable<Cipher> Supported { get; } = new HashSet<Cipher> { TLS_AES_128_GCM_SHA256 };
+
+        public IHash GetHash()
+        {
+            if(hashes.TryGetValue(code, out var hash))
+            {
+                return hash;
+            }
+
+            throw new NotSupportedException();
+        }
+
+        public IAead CreateAead(ReadOnlyMemory<byte> iv, ReadOnlyMemory<byte> key)
+        {
+            if(aeadFactories.TryGetValue(code, out var factory))
+            {
+                return factory(iv, key);
+            }
+
+            throw new NotSupportedException();
+        }
 
         public bool Equals(Cipher other)
         {

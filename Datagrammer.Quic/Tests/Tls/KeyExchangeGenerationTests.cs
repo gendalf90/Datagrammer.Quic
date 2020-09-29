@@ -1,4 +1,5 @@
 ﻿using Datagrammer.Quic.Protocol.Tls;
+using Datagrammer.Quic.Protocol.Tls.Curves;
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;
@@ -12,12 +13,13 @@ namespace Tests.Tls
         public void GeneratePrivateKey_x25519_GeneratedPrivateKeysAreUnique256Bits(int count)
         {
             //Arrange
+            var curve = NamedGroup.X25519.GetCurve();
             var privateKeys = new List<byte[]>();
 
             //Act
             for(int i = 0; i < count; i++)
             {
-                privateKeys.Add(NamedGroup.X25519.GeneratePrivateKey().ToArray());
+                privateKeys.Add(curve.GeneratePrivateKey().ToArray());
             }
             
             //Assert
@@ -34,10 +36,11 @@ namespace Tests.Tls
         public void GeneratePubliceKey_x25519_GeneratedPublicKeyIsExpected(string privateKey, string expectedPublicKey)
         {
             //Arrange
+            var curve = NamedGroup.X25519.GetCurve();
             var privateKeyBytes = Utils.ParseHexString(privateKey);
 
             //Act
-            var result = NamedGroup.X25519.GeneratePublicKey(privateKeyBytes).ToArray();
+            var result = curve.GeneratePublicKey(privateKeyBytes).ToArray();
 
             //Assert
             Assert.Equal(expectedPublicKey, Utils.ToHexString(result), true);

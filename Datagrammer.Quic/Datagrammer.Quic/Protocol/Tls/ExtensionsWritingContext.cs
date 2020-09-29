@@ -8,7 +8,7 @@ namespace Datagrammer.Quic.Protocol.Tls
         private readonly ByteVector.WritingContext vectorContext;
 
         public ExtensionsWritingContext(HandshakeLength.WritingContext payloadContext,
-                                       ByteVector.WritingContext vectorContext)
+                                        ByteVector.WritingContext vectorContext)
         {
             this.payloadContext = payloadContext;
             this.vectorContext = vectorContext;

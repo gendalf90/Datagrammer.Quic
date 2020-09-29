@@ -24,7 +24,8 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public KeyShareEntry GeneratePublicKey()
         {
-            var publicKey = group.GeneratePublicKey(key);
+            var curve = group.GetCurve();
+            var publicKey = curve.GeneratePublicKey(key.Span);
 
             return new KeyShareEntry(group, publicKey);
         }
@@ -38,7 +39,9 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static KeyShareEntry GeneratePrivateKey(NamedGroup group)
         {
-            return new KeyShareEntry(group, group.GeneratePrivateKey());
+            var curve = group.GetCurve();
+
+            return new KeyShareEntry(group, curve.GeneratePrivateKey());
         }
 
         public bool HasSameGroup(KeyShareEntry other)
