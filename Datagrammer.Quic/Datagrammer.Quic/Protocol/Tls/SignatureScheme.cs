@@ -1,11 +1,31 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
+using Datagrammer.Quic.Protocol.Tls.Certificates;
+using Datagrammer.Quic.Protocol.Tls.Hashes;
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct SignatureScheme : IEquatable<SignatureScheme>
     {
+        private static Dictionary<ushort, IHash> hashes = new Dictionary<ushort, IHash>
+        {
+            [0x0804] = Hash.Sha256,
+            [0x0401] = Hash.Sha256,
+            [0x0403] = Hash.Sha256
+        };
+
+        private static Dictionary<ushort, Func<ReadOnlyMemory<byte>, string, IPrivateCertificate>> privateCertificatePfxFactories = new Dictionary<ushort, Func<ReadOnlyMemory<byte>, string, IPrivateCertificate>>
+        {
+            [0x0401] = (data, password) => RsaCertificate.CreatePrivatePfx(data, password, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
+        };
+
+        private static Dictionary<ushort, Func<ReadOnlyMemory<byte>, IPublicCertificate>> publicCertificateFactories = new Dictionary<ushort, Func<ReadOnlyMemory<byte>, IPublicCertificate>>
+        {
+            [0x0401] = (data) => RsaCertificate.CreatePublic(data, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
+        };
+
         private readonly ushort code;
 
         private SignatureScheme(ushort code)
@@ -51,7 +71,37 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static SignatureScheme RSA_PKCS1_SHA1 { get; } = new SignatureScheme(0x0201);
 
-        public static IEnumerable<SignatureScheme> Supported { get; } = new HashSet<SignatureScheme> { RSA_PKCS1_SHA256, RSA_PSS_RSAE_SHA256, ECDSA_SECP256R1_SHA256 };
+        public static IEnumerable<SignatureScheme> Supported { get; } = new HashSet<SignatureScheme> { RSA_PKCS1_SHA256 };
+
+        public IHash GetHash()
+        {
+            if (hashes.TryGetValue(code, out var hash))
+            {
+                return hash;
+            }
+
+            throw new NotSupportedException();
+        }
+
+        public IPrivateCertificate CreatePrivateCertificatePfx(ReadOnlyMemory<byte> data, string password)
+        {
+            if (privateCertificatePfxFactories.TryGetValue(code, out var factory))
+            {
+                return factory(data, password);
+            }
+
+            throw new NotSupportedException();
+        }
+
+        public IPublicCertificate CreatePublicCertificate(ReadOnlyMemory<byte> data)
+        {
+            if (publicCertificateFactories.TryGetValue(code, out var factory))
+            {
+                return factory(data);
+            }
+
+            throw new NotSupportedException();
+        }
 
         public bool Equals(SignatureScheme other)
         {
