@@ -70,7 +70,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             return true;
         }
 
-        public static ExtensionsWritingContext StartWriting(ref Span<byte> destination, 
+        public static HandshakeWritingContext StartWriting(ref Span<byte> destination, 
                                                             HandshakeRandom random,
                                                             CipherSuite cipherSuite,
                                                             SessionId sessionId)
@@ -87,7 +87,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             var extensionsContext = ByteVector.StartVectorWriting(ref destination, 0..ushort.MaxValue);
 
-            return new ExtensionsWritingContext(payloadContext, extensionsContext);
+            return new HandshakeWritingContext(payloadContext, extensionsContext);
         }
     }
 }

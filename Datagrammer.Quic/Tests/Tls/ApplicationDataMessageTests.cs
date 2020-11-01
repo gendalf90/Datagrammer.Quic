@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Tests.Tls
 {
-    public class ApplicationDataTests
+    public class ApplicationDataMessageTests
     {
         //[Fact]
         public void Write_ResultBytesAreExpected()

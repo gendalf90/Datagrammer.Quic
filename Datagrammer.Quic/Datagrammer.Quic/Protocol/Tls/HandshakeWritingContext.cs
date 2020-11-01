@@ -2,12 +2,12 @@
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
-    public readonly ref struct ExtensionsWritingContext
+    public readonly ref struct HandshakeWritingContext
     {
         private readonly HandshakeLength.WritingContext payloadContext;
         private readonly ByteVector.WritingContext vectorContext;
 
-        public ExtensionsWritingContext(HandshakeLength.WritingContext payloadContext,
+        public HandshakeWritingContext(HandshakeLength.WritingContext payloadContext,
                                         ByteVector.WritingContext vectorContext)
         {
             this.payloadContext = payloadContext;

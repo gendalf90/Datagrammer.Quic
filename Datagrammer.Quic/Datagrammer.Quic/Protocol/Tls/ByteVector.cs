@@ -6,6 +6,8 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public static class ByteVector
     {
+        public static int MaxUInt24 = 0xffffff;
+
         public static ReadOnlyMemory<byte> SliceVectorBytes(ReadOnlyMemory<byte> data, Range range, out ReadOnlyMemory<byte> remainings)
         {
             var lengthSizeInBytes = NetworkBitConverter.GetByteLength((ulong)range.End.Value);

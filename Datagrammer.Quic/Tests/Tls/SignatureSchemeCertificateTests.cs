@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Tests.Tls
 {
-    public class CertificateTests
+    public class SignatureSchemeCertificateTests
     {
         [Fact]
         public void CreatePublicCertificate_FromPfx_RSA_PKCS1_SHA256_ResultIsExpected()

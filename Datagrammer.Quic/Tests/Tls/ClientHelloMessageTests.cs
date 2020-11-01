@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Tests.Tls
 {
-    public class ClientHelloTests
+    public class ClientHelloMessageTests
     {
         [Fact]
         public void Write_ResultBytesAreExpected()

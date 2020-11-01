@@ -43,14 +43,12 @@ namespace Datagrammer.Quic.Protocol.Tls
             return true;
         }
 
-        public static ApplicationDataWritingContext StartWriting(ref Span<byte> destination)
+        public static ApplicationLength.WritingContext StartWriting(ref Span<byte> destination)
         {
             ApplicationType.ApplicationData.WriteBytes(ref destination);
             ProtocolVersion.Tls12.WriteBytes(ref destination);
 
-            var payloadContext = ApplicationLength.StartWriting(ref destination);
-
-            return new ApplicationDataWritingContext(payloadContext);
+            return ApplicationLength.StartWriting(ref destination);
         }
     }
 }
