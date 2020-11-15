@@ -16,5 +16,12 @@ namespace Datagrammer.Quic.Protocol.Tls
                 .StartVectorWriting(ref destination, 0..byte.MaxValue)
                 .Complete(ref destination);
         }
+
+        public static void WriteEmpty(MemoryCursor cursor)
+        {
+            ByteVector
+                .StartVectorWriting(cursor, 0..byte.MaxValue)
+                .Dispose();
+        }
     }
 }

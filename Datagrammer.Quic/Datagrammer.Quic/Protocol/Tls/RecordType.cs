@@ -3,16 +3,16 @@ using System;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
-    public readonly struct HandshakeType : IEquatable<HandshakeType>
+    public readonly struct RecordType : IEquatable<RecordType>
     {
         private readonly byte code;
 
-        private HandshakeType(byte code)
+        private RecordType(byte code)
         {
             this.code = code;
         }
 
-        public static bool TrySlice(ref ReadOnlyMemory<byte> bytes, HandshakeType type)
+        public static bool TrySlice(ref ReadOnlyMemory<byte> bytes, RecordType type)
         {
             if (bytes.IsEmpty)
             {
@@ -31,7 +31,21 @@ namespace Datagrammer.Quic.Protocol.Tls
             return true;
         }
 
-        public static HandshakeType Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static RecordType ParseFinalBytes(ref ReadOnlyMemory<byte> bytes)
+        {
+            if (bytes.IsEmpty)
+            {
+                throw new EncodingException();
+            }
+
+            var code = bytes.Span[bytes.Length - 1];
+
+            bytes = bytes.Slice(0, bytes.Length - 1);
+
+            return new RecordType(code);
+        }
+
+        public static RecordType Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             if(bytes.IsEmpty)
             {
@@ -42,14 +56,14 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             remainings = bytes.Slice(1);
 
-            return new HandshakeType(code);
+            return new RecordType(code);
         }
 
         public void WriteBytes(MemoryCursor cursor)
         {
-            var bytes = cursor.Move(1);
+            var current = cursor.Move(1);
 
-            bytes[0] = code;
+            current[0] = code;
         }
 
         public void WriteBytes(ref Span<byte> bytes)
@@ -63,26 +77,18 @@ namespace Datagrammer.Quic.Protocol.Tls
             bytes = bytes.Slice(1);
         }
 
-        public static HandshakeType ClientHello { get; } = new HandshakeType(1); //0x1
+        public static RecordType ApplicationData { get; } = new RecordType(0x17); //23
 
-        public static HandshakeType ServerHello { get; } = new HandshakeType(2); //0x2
+        public static RecordType Handshake { get; } = new RecordType(0x16); //22
 
-        public static HandshakeType EncryptedExtensions { get; } = new HandshakeType(8); //0x8
-
-        public static HandshakeType Certificate { get; } = new HandshakeType(11); //0x0B
-
-        public static HandshakeType CertificateVerify { get; } = new HandshakeType(15); //0x0F
-
-        public static HandshakeType Finished { get; } = new HandshakeType(20); //0x14
-
-        public bool Equals(HandshakeType other)
+        public bool Equals(RecordType other)
         {
             return code == other.code;
         }
 
         public override bool Equals(object obj)
         {
-            return obj is HandshakeType type && Equals(type);
+            return obj is RecordType type && Equals(type);
         }
 
         public override int GetHashCode()
@@ -90,12 +96,12 @@ namespace Datagrammer.Quic.Protocol.Tls
             return code;
         }
 
-        public static bool operator ==(HandshakeType first, HandshakeType second)
+        public static bool operator ==(RecordType first, RecordType second)
         {
             return first.Equals(second);
         }
 
-        public static bool operator !=(HandshakeType first, HandshakeType second)
+        public static bool operator !=(RecordType first, RecordType second)
         {
             return !first.Equals(second);
         }

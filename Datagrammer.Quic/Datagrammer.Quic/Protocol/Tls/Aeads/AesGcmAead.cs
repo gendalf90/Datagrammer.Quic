@@ -6,6 +6,9 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
 {
     public class AesGcmAead : IAead
     {
+        private const int TagLength = 16;
+        private const int NonceLength = 12;
+
         private readonly ReadOnlyMemory<byte> key;
         private readonly ReadOnlyMemory<byte> iv;
         private readonly AesGcm algorithm;
@@ -18,7 +21,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
             algorithm = new AesGcm(key.Span);
         }
 
-        private void BuildNonce(ReadOnlyMemory<byte> iv, long seq, Span<byte> result)
+        private void BuildNonce(ReadOnlyMemory<byte> iv, long sequenceNumber, Span<byte> result)
         {
             if (!iv.Span.TryCopyTo(result))
             {
@@ -27,27 +30,22 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
 
             for (int i = 0; i < 8; i++)
             {
-                result[iv.Length - 1 - i] = (byte)(iv.Span[iv.Length - 1 - i] ^ ((seq >> (i * 8)) & 0xFF));
+                result[iv.Length - 1 - i] = (byte)(iv.Span[iv.Length - 1 - i] ^ ((sequenceNumber >> (i * 8)) & 0xFF));
             }
         }
 
-        public void Encrypt(ReadOnlySpan<byte> dataToEncrypt, int seq, ref Span<byte> destination)
+        public void Encrypt(ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> dataToEncrypt, int sequenceNumber, Span<byte> destination)
         {
             try
             {
-                Span<byte> nonce = stackalloc byte[iv.Length];
+                Span<byte> nonce = stackalloc byte[NonceLength];
 
-                BuildNonce(iv, seq, nonce);
+                BuildNonce(iv, sequenceNumber, nonce);
 
-                var header = dataToEncrypt.Slice(0, 5);
-                var data = dataToEncrypt.Slice(5);
-                var destinationData = destination.Slice(5, data.Length);
-                var destinationTag = destination.Slice(dataToEncrypt.Length, key.Length);
+                var destinationData = destination.Slice(0, dataToEncrypt.Length);
+                var destinationTag = destination.Slice(dataToEncrypt.Length, TagLength);
 
-                header.CopyTo(destination);
-                algorithm.Encrypt(nonce, data, destinationData, destinationTag, header);
-
-                destination = destination.Slice(dataToEncrypt.Length + key.Length);
+                algorithm.Encrypt(nonce, dataToEncrypt, destinationData, destinationTag, associatedData);
             }
             catch (Exception e)
             {
@@ -55,23 +53,19 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
             }
         }
 
-        public void Decrypt(ReadOnlySpan<byte> dataToDecrypt, int seq, ref Span<byte> destination)
+        public void Decrypt(ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> dataToDecrypt, int sequenceNumber, Span<byte> destination)
         {
             try
             {
-                Span<byte> nonce = stackalloc byte[iv.Length];
+                Span<byte> nonce = stackalloc byte[NonceLength];
 
-                BuildNonce(iv, seq, nonce);
+                BuildNonce(iv, sequenceNumber, nonce);
 
-                var header = dataToDecrypt.Slice(0, 5);
-                var tag = dataToDecrypt.Slice(dataToDecrypt.Length - key.Length, key.Length);
-                var data = dataToDecrypt.Slice(5, dataToDecrypt.Length - key.Length - 5);
-                var destinationData = destination.Slice(5, data.Length);
+                var tag = dataToDecrypt.Slice(dataToDecrypt.Length - TagLength, TagLength);
+                var data = dataToDecrypt.Slice(0, dataToDecrypt.Length - tag.Length);
+                var destinationData = destination.Slice(0, data.Length);
 
-                header.CopyTo(destination);
-                algorithm.Decrypt(nonce, data, tag, destinationData, header);
-
-                destination = destination.Slice(header.Length + data.Length);
+                algorithm.Decrypt(nonce, data, tag, destinationData, associatedData);
             }
             catch (Exception e)
             {
@@ -82,6 +76,25 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
         public void Dispose()
         {
             algorithm.Dispose();
+        }
+
+        public EncryptingContext StartEncrypting(ReadOnlySpan<byte> dataToEncrypt, MemoryCursor cursor)
+        {
+            var buffer = cursor.Move(dataToEncrypt.Length + TagLength);
+
+            return new EncryptingContext(true, this, dataToEncrypt, buffer);
+        }
+
+        public EncryptingContext StartDecrypting(ReadOnlySpan<byte> dataToDecrypt, MemoryCursor cursor)
+        {
+            if(dataToDecrypt.Length < TagLength)
+            {
+                throw new EncryptionException();
+            }
+
+            var buffer = cursor.Move(dataToDecrypt.Length - TagLength);
+
+            return new EncryptingContext(false, this, dataToDecrypt, buffer);
         }
     }
 }

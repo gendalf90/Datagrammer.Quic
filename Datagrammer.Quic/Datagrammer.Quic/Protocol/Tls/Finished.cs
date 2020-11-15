@@ -2,45 +2,34 @@
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
-    public readonly struct Finished
+    public static class Finished
     {
-        public Finished(ReadOnlyMemory<byte> verifyData)
+        public static bool TryParse(ref ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> verifyData)
         {
-            VerifyData = verifyData;
-        }
+            verifyData = ReadOnlyMemory<byte>.Empty;
 
-        public ReadOnlyMemory<byte> VerifyData { get; }
-
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out Finished result, out ReadOnlyMemory<byte> remainings)
-        {
-            result = new Finished();
-            remainings = bytes;
-
-            if (bytes.IsEmpty)
+            if (!HandshakeType.TrySlice(ref bytes, HandshakeType.Finished))
             {
                 return false;
             }
 
-            var type = HandshakeType.Parse(bytes, out var afterTypeBytes);
-
-            if (type != HandshakeType.Finished)
-            {
-                return false;
-            }
-
-            var body = HandshakeLength.SliceHandshakeBytes(afterTypeBytes, out var afterBodyBytes);
-            
-            result = new Finished(body);
-            remainings = afterBodyBytes;
+            verifyData = HandshakeLength.SliceHandshakeBytes(ref bytes);
 
             return true;
         }
 
-        public static HandshakeLength.WritingContext StartWriting(ref Span<byte> destination)
+        public static HandshakeLength.WritingContext StartWriting(ref Span<byte> bytes)
         {
-            HandshakeType.Finished.WriteBytes(ref destination);
+            HandshakeType.Finished.WriteBytes(ref bytes);
 
-            return HandshakeLength.StartWriting(ref destination);
+            return HandshakeLength.StartWriting(ref bytes);
+        }
+
+        public static HandshakeLength.CursorWritingContext StartWriting(MemoryCursor cursor)
+        {
+            HandshakeType.Finished.WriteBytes(cursor);
+
+            return HandshakeLength.StartWriting(cursor);
         }
     }
 }

@@ -40,5 +40,19 @@ namespace Datagrammer.Quic.Protocol.Tls
                 .StartVectorWriting(ref destination, 0..ushort.MaxValue)
                 .Complete(ref destination);
         }
+
+        public void Write(MemoryCursor cursor)
+        {
+            using (ByteVector.StartVectorWriting(cursor, 1..ByteVector.MaxUInt24))
+            {
+                var bytes = cursor.Move(Data.Length);
+
+                Data.Span.CopyTo(bytes);
+            }
+
+            ByteVector
+                .StartVectorWriting(cursor, 0..ushort.MaxValue)
+                .Dispose();
+        }
     }
 }

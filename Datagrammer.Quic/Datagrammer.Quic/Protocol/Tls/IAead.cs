@@ -4,8 +4,12 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public interface IAead : IDisposable
     {
-        void Encrypt(ReadOnlySpan<byte> data, int seq, ref Span<byte> destination);
+        EncryptingContext StartEncrypting(ReadOnlySpan<byte> dataToEncrypt, MemoryCursor cursor);
 
-        void Decrypt(ReadOnlySpan<byte> data, int seq, ref Span<byte> destination);
+        void Encrypt(ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> dataToEncrypt, int sequenceNumber, Span<byte> destination);
+
+        EncryptingContext StartDecrypting(ReadOnlySpan<byte> dataToEncrypt, MemoryCursor cursor);
+
+        void Decrypt(ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> dataToDecrypt, int sequenceNumber, Span<byte> destination);
     }
 }

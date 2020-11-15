@@ -58,5 +58,18 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             return new HandshakeWritingContext(payloadContext, certificatesContext);
         }
+
+        public static CursorHandshakeWritingContext StartWriting(MemoryCursor cursor)
+        {
+            HandshakeType.Certificate.WriteBytes(cursor);
+
+            var payloadContext = HandshakeLength.StartWriting(cursor);
+
+            CertificateContext.WriteEmpty(cursor);
+
+            var certificatesContext = ByteVector.StartVectorWriting(cursor, 0..ByteVector.MaxUInt24);
+
+            return new CursorHandshakeWritingContext(payloadContext, certificatesContext);
+        }
     }
 }

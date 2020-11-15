@@ -1,5 +1,5 @@
-﻿using Datagrammer.Quic.Protocol.Tls;
-using System;
+﻿using Datagrammer.Quic.Protocol;
+using Datagrammer.Quic.Protocol.Tls;
 using System.Collections.Generic;
 using Xunit;
 
@@ -17,17 +17,15 @@ namespace Tests.Tls
 
             //Act
             var certificateEntry = new CertificateEntry(certificateBytes);
-            var cursor = buffer.AsSpan();
-            var context = Certificate.StartWriting(ref cursor);
+            var cursor = new MemoryCursor(buffer);
 
-            certificateEntry.Write(ref cursor);
-
-            context.Complete(ref cursor);
-
-            Array.Resize(ref buffer, buffer.Length - cursor.Length);
+            using (Certificate.StartWriting(cursor))
+            {
+                certificateEntry.Write(cursor);
+            }
 
             //Assert
-            Assert.Equal(expectedBytes, Utils.ToHexString(buffer), true);
+            Assert.Equal(expectedBytes, Utils.ToHexString(cursor.Slice().ToArray()), true);
         }
 
         [Fact]

@@ -11,8 +11,7 @@ namespace Datagrammer.Quic.Protocol.Tls
     {
         private static Dictionary<ushort, IHash> hashes = new Dictionary<ushort, IHash>
         {
-            [0x1301] = Hash.Sha256,
-            [0x1303] = Hash.Sha256
+            [0x1301] = Hash.Sha256
         };
 
         private static Dictionary<ushort, Func<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>, IAead>> aeadFactories = new Dictionary<ushort, Func<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>, IAead>>

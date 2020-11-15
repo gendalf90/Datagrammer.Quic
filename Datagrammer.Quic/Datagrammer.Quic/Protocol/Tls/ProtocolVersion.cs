@@ -13,6 +13,11 @@ namespace Datagrammer.Quic.Protocol.Tls
             this.version = version;
         }
 
+        public static ProtocolVersion Parse(ref ReadOnlyMemory<byte> bytes)
+        {
+            return Parse(bytes, out bytes);
+        }
+
         public static ProtocolVersion Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             if (bytes.Length < 2)
@@ -25,6 +30,14 @@ namespace Datagrammer.Quic.Protocol.Tls
             remainings = bytes.Slice(2);
 
             return new ProtocolVersion(version);
+        }
+
+        public void WriteBytes(MemoryCursor cursor)
+        {
+            var bytes = cursor.Move(2);
+
+            bytes[0] = (byte)(version >> 8 & byte.MaxValue);
+            bytes[1] = (byte)(version & byte.MaxValue);
         }
 
         public void WriteBytes(ref Span<byte> bytes)

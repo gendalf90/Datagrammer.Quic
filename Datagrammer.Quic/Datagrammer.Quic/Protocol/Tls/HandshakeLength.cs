@@ -7,6 +7,11 @@ namespace Datagrammer.Quic.Protocol.Tls
     {
         private const int MaxLength = 0xFFFFFF;
 
+        public static ReadOnlyMemory<byte> SliceHandshakeBytes(ref ReadOnlyMemory<byte> bytes)
+        {
+            return SliceHandshakeBytes(bytes, out bytes);
+        }
+
         public static ReadOnlyMemory<byte> SliceHandshakeBytes(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> afterHandshakeBytes)
         {
             if(bytes.Length < 3)
@@ -42,6 +47,14 @@ namespace Datagrammer.Quic.Protocol.Tls
             return context;
         }
 
+        public static CursorWritingContext StartWriting(MemoryCursor cursor)
+        {
+            var lengthBytes = cursor.Move(3);
+            var startLength = cursor.AsOffset();
+
+            return new CursorWritingContext(cursor, startLength, lengthBytes);
+        }
+
         public readonly ref struct WritingContext
         {
             private readonly Span<byte> start;
@@ -68,6 +81,35 @@ namespace Datagrammer.Quic.Protocol.Tls
                 }
 
                 NetworkBitConverter.WriteUnaligned(start, (ulong)payloadLength, 3);
+            }
+        }
+
+        public readonly ref struct CursorWritingContext
+        {
+            private readonly MemoryCursor cursor;
+            private readonly int startLength;
+            private readonly Span<byte> lengthBytes;
+
+            public CursorWritingContext(
+                MemoryCursor cursor,
+                int startLength,
+                Span<byte> lengthBytes)
+            {
+                this.cursor = cursor;
+                this.startLength = startLength;
+                this.lengthBytes = lengthBytes;
+            }
+
+            public void Dispose()
+            {
+                var payloadLength = cursor - startLength;
+
+                if (payloadLength > MaxLength)
+                {
+                    throw new EncodingException();
+                }
+
+                NetworkBitConverter.WriteUnaligned(lengthBytes, (ulong)payloadLength, 3);
             }
         }
     }

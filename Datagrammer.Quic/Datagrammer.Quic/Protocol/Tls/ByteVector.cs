@@ -60,6 +60,15 @@ namespace Datagrammer.Quic.Protocol.Tls
             return context;
         }
 
+        public static CursorWritingContext StartVectorWriting(MemoryCursor cursor, Range range)
+        {
+            var lengthSizeInBytes = NetworkBitConverter.GetByteLength((ulong)range.End.Value);
+            var lengthBytes = cursor.Move(lengthSizeInBytes);
+            var startLength = cursor.AsOffset();
+
+            return new CursorWritingContext(cursor, startLength, lengthBytes, range);
+        }
+
         public readonly ref struct WritingContext
         {
             private readonly Span<byte> start;
@@ -89,6 +98,38 @@ namespace Datagrammer.Quic.Protocol.Tls
                 }
 
                 NetworkBitConverter.WriteUnaligned(start, (ulong)payloadLength, lengthSizeInBytes);
+            }
+        }
+
+        public readonly ref struct CursorWritingContext
+        {
+            private readonly MemoryCursor cursor;
+            private readonly int startLength;
+            private readonly Span<byte> lengthBytes;
+            private readonly Range range;
+
+            public CursorWritingContext(
+                MemoryCursor cursor,
+                int startLength,
+                Span<byte> lengthBytes, 
+                Range range)
+            {
+                this.cursor = cursor;
+                this.startLength = startLength;
+                this.lengthBytes = lengthBytes;
+                this.range = range;
+            }
+
+            public void Dispose()
+            {
+                var payloadLength = cursor - startLength;
+                
+                if (payloadLength < range.Start.Value || payloadLength > range.End.Value)
+                {
+                    throw new EncodingException();
+                }
+
+                NetworkBitConverter.WriteUnaligned(lengthBytes, (ulong)payloadLength, lengthBytes.Length);
             }
         }
     }
