@@ -4,26 +4,27 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct CertificateEntryList
     {
-        private readonly ReadOnlyMemory<byte> bytes;
+        private readonly MemoryCursor cursor;
 
-        public CertificateEntryList(ReadOnlyMemory<byte> bytes)
+        public CertificateEntryList(MemoryCursor cursor)
         {
-            this.bytes = bytes;
+            this.cursor = cursor;
         }
 
         public CertificateEntryEnumerator GetEnumerator()
         {
-            return new CertificateEntryEnumerator(bytes);
+            return new CertificateEntryEnumerator(cursor);
         }
 
         public struct CertificateEntryEnumerator
         {
-            private ReadOnlyMemory<byte> remainings;
+            private MemoryCursor cursor;
             private CertificateEntry? current;
 
-            public CertificateEntryEnumerator(ReadOnlyMemory<byte> bytes)
+            public CertificateEntryEnumerator(MemoryCursor cursor)
             {
-                remainings = bytes;
+                this.cursor = cursor;
+
                 current = null;
             }
 
@@ -33,12 +34,12 @@ namespace Datagrammer.Quic.Protocol.Tls
             {
                 current = null;
 
-                if(remainings.IsEmpty)
+                if(!cursor.HasNext())
                 {
                     return false;
                 }
 
-                current = CertificateEntry.Parse(remainings, out remainings);
+                current = CertificateEntry.Parse(cursor);
 
                 return true;
             }

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Datagrammer.Quic.Protocol.Tls
+﻿namespace Datagrammer.Quic.Protocol.Tls
 {
     public static class EncryptedExtensions
     {
@@ -10,30 +8,21 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             using (HandshakeLength.StartWriting(cursor))
             {
-                var bytes = cursor.Move(2);
+                var bytes = cursor.Move(2).Span;
 
                 bytes[0] = 0;
                 bytes[1] = 0;
             }
         }
 
-        public static bool TrySlice(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static bool TrySlice(MemoryCursor cursor)
         {
-            remainings = bytes;
-
-            if (bytes.IsEmpty)
+            if(!HandshakeType.TrySlice(cursor, HandshakeType.EncryptedExtensions))
             {
                 return false;
             }
 
-            var type = HandshakeType.Parse(bytes, out var afterTypeBytes);
-
-            if (type != HandshakeType.EncryptedExtensions)
-            {
-                return false;
-            }
-
-            HandshakeLength.SliceHandshakeBytes(afterTypeBytes, out remainings);
+            HandshakeLength.SliceBytes(cursor);
 
             return true;
         }

@@ -32,9 +32,17 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new ProtocolVersion(version);
         }
 
+        public static ProtocolVersion Parse(MemoryCursor cursor)
+        {
+            var versionBytes = cursor.Move(2).Span;
+            var version = (short)(versionBytes[0] << 8 | versionBytes[1]);
+
+            return new ProtocolVersion(version);
+        }
+
         public void WriteBytes(MemoryCursor cursor)
         {
-            var bytes = cursor.Move(2);
+            var bytes = cursor.Move(2).Span;
 
             bytes[0] = (byte)(version >> 8 & byte.MaxValue);
             bytes[1] = (byte)(version & byte.MaxValue);

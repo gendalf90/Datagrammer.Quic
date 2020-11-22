@@ -1,6 +1,8 @@
 ﻿using Datagrammer.Quic.Protocol;
 using Datagrammer.Quic.Protocol.Tls;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Xunit;
 using TlsRecord = Datagrammer.Quic.Protocol.Tls.Record;
 
@@ -30,7 +32,7 @@ namespace Tests.Tls
 
                 using (Certificate.StartWriting(cursor))
                 {
-                    new CertificateEntry(Utils.ParseHexString(cerificateData)).Write(cursor);
+                    CertificateEntry.Write(Utils.ParseHexString(cerificateData), cursor);
                 }
 
                 using (CertificateVerify.StartWriting(cursor, SignatureScheme.RSA_PSS_RSAE_SHA256))
@@ -46,6 +48,48 @@ namespace Tests.Tls
 
             //Assert
             Assert.Equal(expectedData, Utils.ToHexString(cursor.Slice().ToArray()), true);
+        }
+
+        [Fact]
+        public void ReadEncryptedApplicationData_ResultIsExpected()
+        {
+            //Arrange
+            var messageData = GetEncryptedApplicationData();
+            var cerificateData = GetCertificateData();
+            var signatureData = GetSignatureData();
+            var verifyData = GetVerifyData();
+            var encryptionData = GetEncryptionData();
+            var parsedCertificateEntries = new List<CertificateEntry>();
+            var parsedCertificateData = new Memory<byte>();
+
+            using var aead = Cipher.TLS_AES_128_GCM_SHA256.CreateAead(Utils.ParseHexString(encryptionData.Iv), Utils.ParseHexString(encryptionData.Key));
+
+            //Act
+            var cursor = new MemoryCursor(Utils.ParseHexString(messageData));
+            var result = TlsRecord.TryParseEncrypted(cursor, aead, encryptionData.SeqNum, out var record);
+
+            using (record.Payload.SetCursor(cursor))
+            {
+                result &= EncryptedExtensions.TrySlice(cursor);
+
+                result &= Certificate.TryParse(cursor, out var certificate);
+
+                using (certificate.Payload.SetCursor(cursor))
+                {
+                    foreach (var entry in new CertificateEntryList(cursor))
+                    {
+                        parsedCertificateEntries.Add(entry);
+                    }
+                }
+
+                parsedCertificateData = parsedCertificateEntries.First().Data.Slice(cursor);
+            }
+
+            //Assert
+            Assert.True(result);
+            Assert.Equal(RecordType.Handshake, record.Type);
+            Assert.Single(parsedCertificateEntries);
+            Assert.Equal(cerificateData, Utils.ToHexString(parsedCertificateData.ToArray()), true);
         }
 
         private string GetEncryptedApplicationData()

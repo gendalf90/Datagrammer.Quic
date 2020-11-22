@@ -12,35 +12,26 @@ namespace Datagrammer.Quic.Protocol.Tls
             this.code = code;
         }
 
-        public static bool TrySlice(ref ReadOnlyMemory<byte> bytes, RecordType type)
+        public static bool TrySlice(MemoryCursor cursor, RecordType type)
         {
-            if (bytes.IsEmpty)
+            if(!cursor.TryPeek(1, out var bytes))
             {
                 return false;
             }
 
-            var code = bytes.Span[0];
-
-            if (code != type.code)
+            if(bytes.Span[0] != type.code)
             {
                 return false;
             }
 
-            bytes = bytes.Slice(1);
+            cursor.Move(1);
 
             return true;
         }
 
-        public static RecordType ParseFinalBytes(ref ReadOnlyMemory<byte> bytes)
+        public static RecordType ParseReverse(MemoryCursor cursor)
         {
-            if (bytes.IsEmpty)
-            {
-                throw new EncodingException();
-            }
-
-            var code = bytes.Span[bytes.Length - 1];
-
-            bytes = bytes.Slice(0, bytes.Length - 1);
+            var code = cursor.Move(-1).Span[0];
 
             return new RecordType(code);
         }
@@ -61,9 +52,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public void WriteBytes(MemoryCursor cursor)
         {
-            var current = cursor.Move(1);
-
-            current[0] = code;
+            cursor.Move(1).Span[0] = code;
         }
 
         public void WriteBytes(ref Span<byte> bytes)

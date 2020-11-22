@@ -1,5 +1,4 @@
-﻿using Datagrammer.Quic.Protocol.Error;
-using System;
+﻿using System;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
@@ -8,6 +7,11 @@ namespace Datagrammer.Quic.Protocol.Tls
         public static void SkipBytes(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             ByteVector.SliceVectorBytes(bytes, 0..byte.MaxValue, out remainings);
+        }
+
+        public static void SkipBytes(MemoryCursor cursor)
+        {
+            ByteVector.SliceVectorBytes(cursor, 0..byte.MaxValue);
         }
 
         public static void WriteEmpty(ref Span<byte> destination)

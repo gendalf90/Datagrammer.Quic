@@ -7,49 +7,49 @@ namespace Tests.Tls
 {
     public class CertificateMessageTests
     {
-        [Fact]
-        public void Write_ResultIsExpected()
-        {
-            //Arrange
-            var expectedBytes = GetMessageHexString();
-            var certificateBytes = Utils.ParseHexString(GetCertificateHexDataString());
-            var buffer = new byte[TlsBuffer.MaxRecordSize];
+        //[Fact]
+        //public void Write_ResultIsExpected()
+        //{
+        //    //Arrange
+        //    var expectedBytes = GetMessageHexString();
+        //    var certificateBytes = Utils.ParseHexString(GetCertificateHexDataString());
+        //    var buffer = new byte[TlsBuffer.MaxRecordSize];
 
-            //Act
-            var certificateEntry = new CertificateEntry(certificateBytes);
-            var cursor = new MemoryCursor(buffer);
+        //    //Act
+        //    var certificateEntry = new CertificateEntry(certificateBytes);
+        //    var cursor = new MemoryCursor(buffer);
 
-            using (Certificate.StartWriting(cursor))
-            {
-                certificateEntry.Write(cursor);
-            }
+        //    using (Certificate.StartWriting(cursor))
+        //    {
+        //        certificateEntry.Write(cursor);
+        //    }
 
-            //Assert
-            Assert.Equal(expectedBytes, Utils.ToHexString(cursor.Slice().ToArray()), true);
-        }
+        //    //Assert
+        //    Assert.Equal(expectedBytes, Utils.ToHexString(cursor.Slice().ToArray()), true);
+        //}
 
-        [Fact]
-        public void Read_HasOneCertificateInList_CertificateIsExpected()
-        {
-            //Arrange
-            var expectedBytes = GetCertificateHexDataString();
-            var messageBytes = Utils.ParseHexString(GetMessageHexString());
-            var parsedCertificateEntries = new List<CertificateEntry>();
+        //[Fact]
+        //public void Read_HasOneCertificateInList_CertificateIsExpected()
+        //{
+        //    //Arrange
+        //    var expectedBytes = GetCertificateHexDataString();
+        //    var messageBytes = Utils.ParseHexString(GetMessageHexString());
+        //    var parsedCertificateEntries = new List<CertificateEntry>();
 
-            //Act
-            var result = Certificate.TryParse(messageBytes, out var message, out var remainings);
+        //    //Act
+        //    var result = Certificate.TryParse(messageBytes, out var message, out var remainings);
             
-            foreach(var entry in new CertificateEntryList(message.Payload))
-            {
-                parsedCertificateEntries.Add(entry);
-            }
+        //    foreach(var entry in new CertificateEntryList(message.Payload))
+        //    {
+        //        parsedCertificateEntries.Add(entry);
+        //    }
 
-            //Assert
-            Assert.True(result);
-            Assert.True(remainings.IsEmpty);
-            Assert.Single(parsedCertificateEntries);
-            Assert.Equal(expectedBytes, Utils.ToHexString(parsedCertificateEntries[0].Data.ToArray()), true);
-        }
+        //    //Assert
+        //    Assert.True(result);
+        //    Assert.True(remainings.IsEmpty);
+        //    Assert.Single(parsedCertificateEntries);
+        //    Assert.Equal(expectedBytes, Utils.ToHexString(parsedCertificateEntries[0].Data.ToArray()), true);
+        //}
 
         private string GetMessageHexString()
         {

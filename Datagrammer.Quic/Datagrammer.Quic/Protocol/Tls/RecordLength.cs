@@ -1,6 +1,5 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
 using System;
-using System.Threading;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
@@ -8,30 +7,51 @@ namespace Datagrammer.Quic.Protocol.Tls
     {
         private const int MaxLength = 0x4000;
 
-        public static ReadOnlyMemory<byte> SliceBytes(ref ReadOnlyMemory<byte> bytes)
+        public static MemoryBuffer SliceBytes(MemoryCursor cursor)
         {
-            return SliceBytes(bytes, out bytes);
+            var lengthBytes = cursor.Move(2);
+            var length = (int)NetworkBitConverter.ParseUnaligned(lengthBytes.Span);
+
+            if(length > MaxLength)
+            {
+                throw new EncodingException();
+            }
+
+            var startOffsetOfBody = cursor.AsOffset();
+
+            cursor.Move(length);
+
+            return new MemoryBuffer(startOffsetOfBody, length);
         }
 
-        public static ReadOnlyMemory<byte> SliceBytes(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> afterApplicationBytes)
+        public static MemoryBuffer DecryptBytes(MemoryCursor cursor, int startOffsetOfMessage, IAead aead, int sequenceNumber)
         {
-            if (bytes.Length < 2)
-            {
-                throw new EncodingException();
-            }
-
-            var lengthBytes = bytes.Slice(0, 2);
+            var headerLength = cursor - startOffsetOfMessage + 2;
+            var lengthBytes = cursor.Move(2);
+            var headerBytes = cursor.Peek(-headerLength);
             var length = (int)NetworkBitConverter.ParseUnaligned(lengthBytes.Span);
-            var afterLengthBytes = bytes.Slice(2);
 
-            if (afterLengthBytes.Length < length)
+            if (length > MaxLength)
             {
                 throw new EncodingException();
             }
 
-            afterApplicationBytes = afterLengthBytes.Slice(length);
+            using var cursorLimitContext = cursor.WithLimit(length);
 
-            return afterLengthBytes.Slice(0, length);
+            var encryptedBytes = cursor.Peek(length);
+            var startOffsetOfBody = cursor.AsOffset();
+
+            Span<byte> encryptedBuffer = stackalloc byte[length];
+
+            encryptedBytes.Span.CopyTo(encryptedBuffer);
+
+            var decryptionContext = aead.StartDecrypting(encryptedBuffer, cursor);
+
+            decryptionContext.Complete(headerBytes.Span, sequenceNumber);
+            cursor.Set(startOffsetOfBody);
+            cursor.Move(length);
+
+            return new MemoryBuffer(startOffsetOfBody, decryptionContext.ResultBuffer.Length);
         }
 
         public static WritingContext StartWriting(MemoryCursor cursor, RecordType type)
@@ -39,7 +59,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             var lengthBytes = cursor.Move(2);
             var startLength = cursor.AsOffset();
 
-            return new WritingContext(cursor, startLength, lengthBytes, type);
+            return new WritingContext(cursor, startLength, lengthBytes.Span, type);
         }
 
         public static EncryptedWritingContext StartEncryptedWriting(
@@ -52,7 +72,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             var lengthBytes = cursor.Move(2);
             var startLengthOfBody = cursor.AsOffset();
 
-            return new EncryptedWritingContext(cursor, lengthBytes, startLengthOfBody, startLengthOfMessage, type, aead, sequenceNumber);
+            return new EncryptedWritingContext(cursor, lengthBytes.Span, startLengthOfBody, startLengthOfMessage, type, aead, sequenceNumber);
         }
 
         public readonly ref struct WritingContext
@@ -132,7 +152,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
                 var payloadData = cursor.Move(-payloadLength);
 
-                payloadData.CopyTo(payloadBuffer);
+                payloadData.Span.CopyTo(payloadBuffer);
 
                 var headerLength = cursor - startLengthOfMessage;
                 var headerData = cursor.Peek(-headerLength);
@@ -146,7 +166,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
                 NetworkBitConverter.WriteUnaligned(lengthBytes, (ulong)encryptedPayloadLength, 2);
 
-                encryptingContext.Complete(headerData, sequenceNumber);
+                encryptingContext.Complete(headerData.Span, sequenceNumber);
             }
         }
     }

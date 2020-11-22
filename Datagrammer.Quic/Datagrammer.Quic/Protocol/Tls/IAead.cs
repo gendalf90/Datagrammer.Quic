@@ -8,7 +8,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         void Encrypt(ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> dataToEncrypt, int sequenceNumber, Span<byte> destination);
 
-        EncryptingContext StartDecrypting(ReadOnlySpan<byte> dataToEncrypt, MemoryCursor cursor);
+        EncryptingContext StartDecrypting(ReadOnlySpan<byte> dataToDecrypt, MemoryCursor cursor);
 
         void Decrypt(ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> dataToDecrypt, int sequenceNumber, Span<byte> destination);
     }

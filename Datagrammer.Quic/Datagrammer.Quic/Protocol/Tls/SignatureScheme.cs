@@ -53,7 +53,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public void WriteBytes(MemoryCursor cursor)
         {
-            var bytes = cursor.Move(2);
+            var bytes = cursor.Move(2).Span;
 
             NetworkBitConverter.WriteUnaligned(bytes, code, 2);
         }

@@ -7,6 +7,17 @@ namespace Datagrammer.Quic.Protocol.Tls
     {
         private const int MaxLength = 0xFFFFFF;
 
+        public static MemoryBuffer SliceBytes(MemoryCursor cursor)
+        {
+            var lengthBytes = cursor.Move(3);
+            var length = (int)NetworkBitConverter.ParseUnaligned(lengthBytes.Span);
+            var startOffsetOfBody = cursor.AsOffset();
+
+            cursor.Move(length);
+
+            return new MemoryBuffer(startOffsetOfBody, length);
+        }
+
         public static ReadOnlyMemory<byte> SliceHandshakeBytes(ref ReadOnlyMemory<byte> bytes)
         {
             return SliceHandshakeBytes(bytes, out bytes);
@@ -49,7 +60,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static CursorWritingContext StartWriting(MemoryCursor cursor)
         {
-            var lengthBytes = cursor.Move(3);
+            var lengthBytes = cursor.Move(3).Span;
             var startLength = cursor.AsOffset();
 
             return new CursorWritingContext(cursor, startLength, lengthBytes);

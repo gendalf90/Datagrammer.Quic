@@ -82,7 +82,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
         {
             var buffer = cursor.Move(dataToEncrypt.Length + TagLength);
 
-            return new EncryptingContext(true, this, dataToEncrypt, buffer);
+            return new EncryptingContext(true, this, dataToEncrypt, buffer.Span);
         }
 
         public EncryptingContext StartDecrypting(ReadOnlySpan<byte> dataToDecrypt, MemoryCursor cursor)
@@ -94,7 +94,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
 
             var buffer = cursor.Move(dataToDecrypt.Length - TagLength);
 
-            return new EncryptingContext(false, this, dataToDecrypt, buffer);
+            return new EncryptingContext(false, this, dataToDecrypt, buffer.Span);
         }
     }
 }

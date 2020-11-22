@@ -1,11 +1,10 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
-using System;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct Record
     {
-        public Record(RecordType type, ReadOnlyMemory<byte> payload)
+        public Record(RecordType type, MemoryBuffer payload)
         {
             Type = type;
             Payload = payload;
@@ -13,28 +12,68 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public RecordType Type { get; }
 
-        public ReadOnlyMemory<byte> Payload { get; }
+        public MemoryBuffer Payload { get; }
 
-        public static bool TryParse(ref ReadOnlyMemory<byte> bytes, out Record result)
+        public static bool TryParse(MemoryCursor cursor, out Record result)
         {
             result = new Record();
 
-            if(!RecordType.TrySlice(ref bytes, RecordType.ApplicationData))
+            if(!RecordType.TrySlice(cursor, RecordType.ApplicationData))
             {
                 return false;
             }
 
-            var legacyVersion = ProtocolVersion.Parse(ref bytes);
+            var legacyVersion = ProtocolVersion.Parse(cursor);
 
             if (legacyVersion != ProtocolVersion.Tls12)
             {
                 throw new EncodingException();
             }
 
-            var body = RecordLength.SliceBytes(ref bytes);
-            var actualType = RecordType.ParseFinalBytes(ref body);
+            var body = RecordLength.SliceBytes(cursor);
 
-            result = new Record(actualType, body);
+            using var bodyContext = body.SetCursor(cursor);
+
+            var startOffsetOfBody = cursor.AsOffset();
+
+            cursor.Reverse();
+
+            var actualType = RecordType.ParseReverse(cursor);
+
+            result = new Record(actualType, new MemoryBuffer(startOffsetOfBody, cursor - startOffsetOfBody));
+
+            return true;
+        }
+
+        public static bool TryParseEncrypted(MemoryCursor cursor, IAead aead, int sequenceNumber, out Record result)
+        {
+            var startOffsetOfMessage = cursor.AsOffset();
+
+            result = new Record();
+
+            if (!RecordType.TrySlice(cursor, RecordType.ApplicationData))
+            {
+                return false;
+            }
+
+            var legacyVersion = ProtocolVersion.Parse(cursor);
+
+            if (legacyVersion != ProtocolVersion.Tls12)
+            {
+                throw new EncodingException();
+            }
+
+            var body = RecordLength.DecryptBytes(cursor, startOffsetOfMessage, aead, sequenceNumber);
+
+            using var bodyContext = body.SetCursor(cursor);
+
+            var startOffsetOfBody = cursor.AsOffset();
+
+            cursor.Reverse();
+
+            var actualType = RecordType.ParseReverse(cursor);
+
+            result = new Record(actualType, new MemoryBuffer(startOffsetOfBody, cursor - startOffsetOfBody));
 
             return true;
         }

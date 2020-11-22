@@ -1,53 +1,59 @@
-﻿using Datagrammer.Quic.Protocol.Error;
-using System;
+﻿using System;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct CertificateEntry
     {
-        public CertificateEntry(ReadOnlyMemory<byte> data)
+        public CertificateEntry(MemoryBuffer data)
         {
             Data = data;
         }
 
-        public ReadOnlyMemory<byte> Data { get; }
+        public MemoryBuffer Data { get; }
 
-        public static CertificateEntry Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static CertificateEntry Parse(MemoryCursor cursor)
         {
-            var data = ByteVector.SliceVectorBytes(bytes, 1..ByteVector.MaxUInt24, out var afterDataBytes);
+            var data = ByteVector.SliceVectorBytes(cursor, 1..ByteVector.MaxUInt24);
 
-            ByteVector.SliceVectorBytes(afterDataBytes, 0..ushort.MaxValue, out var afterExtensionsBytes);
-
-            remainings = afterExtensionsBytes;
+            ByteVector.SliceVectorBytes(cursor, 0..ushort.MaxValue);
 
             return new CertificateEntry(data);
         }
 
-        public void Write(ref Span<byte> destination)
-        {
-            var context = ByteVector.StartVectorWriting(ref destination, 1..ByteVector.MaxUInt24);
+        //public static CertificateEntry Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        //{
+        //    var data = ByteVector.SliceVectorBytes(bytes, 1..ByteVector.MaxUInt24, out var afterDataBytes);
 
-            if(!Data.Span.TryCopyTo(destination))
-            {
-                throw new EncodingException();
-            }
+        //    ByteVector.SliceVectorBytes(afterDataBytes, 0..ushort.MaxValue, out var afterExtensionsBytes);
 
-            destination = destination.Slice(Data.Length);
+        //    remainings = afterExtensionsBytes;
 
-            context.Complete(ref destination);
+        //    return new CertificateEntry(data);
+        //}
 
-            ByteVector
-                .StartVectorWriting(ref destination, 0..ushort.MaxValue)
-                .Complete(ref destination);
-        }
+        //public void Write(ref Span<byte> destination)
+        //{
+        //    var context = ByteVector.StartVectorWriting(ref destination, 1..ByteVector.MaxUInt24);
 
-        public void Write(MemoryCursor cursor)
+        //    if(!Data.Span.TryCopyTo(destination))
+        //    {
+        //        throw new EncodingException();
+        //    }
+
+        //    destination = destination.Slice(Data.Length);
+
+        //    context.Complete(ref destination);
+
+        //    ByteVector
+        //        .StartVectorWriting(ref destination, 0..ushort.MaxValue)
+        //        .Complete(ref destination);
+        //}
+
+        public static void Write(ReadOnlyMemory<byte> data, MemoryCursor cursor)
         {
             using (ByteVector.StartVectorWriting(cursor, 1..ByteVector.MaxUInt24))
             {
-                var bytes = cursor.Move(Data.Length);
-
-                Data.Span.CopyTo(bytes);
+                data.CopyTo(cursor);
             }
 
             ByteVector

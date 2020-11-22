@@ -8,6 +8,30 @@ namespace Datagrammer.Quic.Protocol.Tls
     {
         public static int MaxUInt24 = 0xffffff;
 
+        public static MemoryBuffer SliceVectorBytes(MemoryCursor cursor, Range range)
+        {
+            var lengthSizeInBytes = NetworkBitConverter.GetByteLength((ulong)range.End.Value);
+
+            if (lengthSizeInBytes > 4)
+            {
+                throw new EncodingException();
+            }
+
+            var lengthBytes = cursor.Move(lengthSizeInBytes);
+            var length = (int)NetworkBitConverter.ParseUnaligned(lengthBytes.Span);
+
+            if (length < range.Start.Value || length > range.End.Value)
+            {
+                throw new EncodingException();
+            }
+
+            var startOffset = cursor.AsOffset();
+
+            cursor.Move(length);
+
+            return new MemoryBuffer(startOffset, length);
+        }
+
         public static ReadOnlyMemory<byte> SliceVectorBytes(ReadOnlyMemory<byte> data, Range range, out ReadOnlyMemory<byte> remainings)
         {
             var lengthSizeInBytes = NetworkBitConverter.GetByteLength((ulong)range.End.Value);
@@ -63,7 +87,7 @@ namespace Datagrammer.Quic.Protocol.Tls
         public static CursorWritingContext StartVectorWriting(MemoryCursor cursor, Range range)
         {
             var lengthSizeInBytes = NetworkBitConverter.GetByteLength((ulong)range.End.Value);
-            var lengthBytes = cursor.Move(lengthSizeInBytes);
+            var lengthBytes = cursor.Move(lengthSizeInBytes).Span;
             var startLength = cursor.AsOffset();
 
             return new CursorWritingContext(cursor, startLength, lengthBytes, range);
