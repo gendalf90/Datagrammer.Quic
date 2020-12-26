@@ -4,7 +4,6 @@ using Datagrammer.Quic.Protocol.Tls.Hashes;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
@@ -62,11 +61,6 @@ namespace Datagrammer.Quic.Protocol.Tls
             var writtenLength = NetworkBitConverter.WriteUnaligned(bytes, code, 2);
 
             bytes = bytes.Slice(writtenLength);
-        }
-
-        public void WriteBytes(Stream stream)
-        {
-            NetworkBitConverter.WriteUnaligned(stream, code, 2);
         }
 
         public static Cipher TLS_AES_128_GCM_SHA256 { get; } = new Cipher(0x1301);

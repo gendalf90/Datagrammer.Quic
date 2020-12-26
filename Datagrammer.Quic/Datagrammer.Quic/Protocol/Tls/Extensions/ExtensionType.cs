@@ -27,7 +27,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return new ExtensionType(code);
         }
 
-        public static bool TryParse(MemoryCursor cursor, ExtensionType type)
+        public static bool TrySlice(MemoryCursor cursor, ExtensionType type)
         {
             var bytes = cursor.Peek(2);
             var code = (ushort)NetworkBitConverter.ParseUnaligned(bytes.Span);

@@ -55,20 +55,6 @@ namespace Datagrammer.Quic.Protocol.Tls
             return afterLengthBytes.Slice(0, length);
         }
 
-        public static void WriteVector(Stream stream, Range range, ReadOnlyMemory<byte> bytes)
-        {
-            var lengthSizeInBytes = NetworkBitConverter.GetByteLength((ulong)range.End.Value);
-
-            if (bytes.Length < range.Start.Value || bytes.Length > range.End.Value)
-            {
-                throw new EncodingException();
-            }
-
-            NetworkBitConverter.WriteUnaligned(stream, (ulong)bytes.Length, lengthSizeInBytes);
-
-            stream.Write(bytes.Span);
-        }
-
         public static WritingContext StartVectorWriting(ref Span<byte> bytes, Range range)
         {
             var context = new WritingContext(bytes, range);

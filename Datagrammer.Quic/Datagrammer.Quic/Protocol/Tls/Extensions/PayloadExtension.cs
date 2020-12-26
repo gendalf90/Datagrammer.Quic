@@ -6,7 +6,7 @@
         {
             buffer = new MemoryBuffer();
 
-            if(!ExtensionType.TryParse(cursor, type))
+            if(!ExtensionType.TrySlice(cursor, type))
             {
                 return false;
             }

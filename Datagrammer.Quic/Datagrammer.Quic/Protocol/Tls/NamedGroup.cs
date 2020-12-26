@@ -3,7 +3,6 @@ using Datagrammer.Quic.Protocol.Tls.Curves;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
@@ -49,11 +48,6 @@ namespace Datagrammer.Quic.Protocol.Tls
             var bytes = cursor.Move(2);
 
             NetworkBitConverter.WriteUnaligned(bytes.Span, code, 2);
-        }
-
-        public void WriteBytes(Stream stream)
-        {
-            NetworkBitConverter.WriteUnaligned(stream, code, 2);
         }
 
         public void WriteBytes(ref Span<byte> bytes)

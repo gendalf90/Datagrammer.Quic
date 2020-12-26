@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Datagrammer.Quic.Protocol.Tls
+﻿namespace Datagrammer.Quic.Protocol.Tls
 {
     public static class Finished
     {
@@ -16,27 +14,6 @@ namespace Datagrammer.Quic.Protocol.Tls
             verifyData = HandshakeLength.SliceBytes(cursor);
 
             return true;
-        }
-
-        public static bool TryParse(ref ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> verifyData)
-        {
-            verifyData = ReadOnlyMemory<byte>.Empty;
-
-            if (!HandshakeType.TrySlice(ref bytes, HandshakeType.Finished))
-            {
-                return false;
-            }
-
-            verifyData = HandshakeLength.SliceHandshakeBytes(ref bytes);
-
-            return true;
-        }
-
-        public static HandshakeLength.WritingContext StartWriting(ref Span<byte> bytes)
-        {
-            HandshakeType.Finished.WriteBytes(ref bytes);
-
-            return HandshakeLength.StartWriting(ref bytes);
         }
 
         public static HandshakeLength.CursorWritingContext StartWriting(MemoryCursor cursor)

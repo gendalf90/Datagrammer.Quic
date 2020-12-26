@@ -40,23 +40,6 @@ namespace Datagrammer.Quic.Protocol
             return length;
         }
 
-        public static int WriteUnaligned(Stream stream, ulong value, int? desiredLength = null)
-        {
-            var length = desiredLength ?? GetByteLength(value);
-
-            if (length < 1 || length > sizeof(ulong))
-            {
-                throw new EncodingException();
-            }
-
-            for (int i = 0, j = length - 1; i < length; i++, j--)
-            {
-                stream.WriteByte((byte)(value >> (j * 8) & byte.MaxValue));
-            }
-
-            return length;
-        }
-
         public static int GetByteLength(ulong value)
         {
             var length = 0;

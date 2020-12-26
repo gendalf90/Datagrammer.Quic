@@ -34,7 +34,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             using (HandshakeLength.SliceBytes(cursor).SetCursor(cursor))
             {
-                if (!ProtocolVersion.TryParse(cursor, ProtocolVersion.Tls12))
+                if (!ProtocolVersion.TrySlice(cursor, ProtocolVersion.Tls12))
                 {
                     throw new EncodingException();
                 }

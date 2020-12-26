@@ -84,5 +84,12 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             return RecordLength.StartEncryptedWriting(cursor, startLengthOfMessage, type, aead, sequenceNumber);
         }
+
+        public static void SliceUnknown(MemoryCursor cursor)
+        {
+            RecordType.Parse(cursor);
+            ProtocolVersion.Parse(cursor);
+            RecordLength.SliceBytes(cursor);
+        }
     }
 }

@@ -14,9 +14,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static bool TrySlice(MemoryCursor cursor, RecordType type)
         {
-            var bytes = cursor.Peek(1);
-
-            if(bytes.Span[0] != type.code)
+            if(cursor.Peek(1).Span[0] != type.code)
             {
                 return false;
             }
@@ -26,11 +24,14 @@ namespace Datagrammer.Quic.Protocol.Tls
             return true;
         }
 
+        public static RecordType Parse(MemoryCursor cursor)
+        {
+            return new RecordType(cursor.Move(1).Span[0]);
+        }
+
         public static RecordType ParseReverse(MemoryCursor cursor)
         {
-            var code = cursor.Move(-1).Span[0];
-
-            return new RecordType(code);
+            return new RecordType(cursor.Move(-1).Span[0]);
         }
 
         public static RecordType Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)

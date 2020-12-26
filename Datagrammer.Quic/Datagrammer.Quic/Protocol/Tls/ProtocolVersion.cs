@@ -27,7 +27,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new ProtocolVersion(version);
         }
 
-        public static bool TryParse(MemoryCursor cursor, ProtocolVersion protocolVersion)
+        public static bool TrySlice(MemoryCursor cursor, ProtocolVersion protocolVersion)
         {
             var versionBytes = cursor.Peek(2).Span;
             var version = (short)(versionBytes[0] << 8 | versionBytes[1]);
