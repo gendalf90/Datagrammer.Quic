@@ -1,5 +1,4 @@
-﻿using Datagrammer.Quic.Protocol.Error;
-using System;
+﻿using System;
 using System.Security.Cryptography;
 
 namespace Datagrammer.Quic.Protocol.Tls.Curves
@@ -11,6 +10,8 @@ namespace Datagrammer.Quic.Protocol.Tls.Curves
 
         private const int C_A = 486662;
         private const int C_A24 = (C_A + 2) / 4;
+
+        private static readonly RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
 
         private static void DecodeScalar(ReadOnlySpan<byte> k, int kOff, Span<uint> n)
         {
@@ -135,10 +136,9 @@ namespace Datagrammer.Quic.Protocol.Tls.Curves
 
         public ReadOnlyMemory<byte> GeneratePrivateKey()
         {
-            var random = new RNGCryptoServiceProvider();
             var buffer = new byte[ScalarSize];
 
-            GeneratePrivateKey(random, buffer);
+            GeneratePrivateKey(rng, buffer);
 
             return buffer;
         }

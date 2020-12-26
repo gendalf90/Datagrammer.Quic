@@ -27,11 +27,41 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return new ExtensionType(code);
         }
 
+        public static bool TryParse(MemoryCursor cursor, ExtensionType type)
+        {
+            var bytes = cursor.Peek(2);
+            var code = (ushort)NetworkBitConverter.ParseUnaligned(bytes.Span);
+
+            if(type.code != code)
+            {
+                return false;
+            }
+
+            cursor.Move(2);
+
+            return true;
+        }
+
+        public static ExtensionType Parse(MemoryCursor cursor)
+        {
+            var codeBytes = cursor.Move(2);
+            var code = (ushort)NetworkBitConverter.ParseUnaligned(codeBytes.Span);
+
+            return new ExtensionType(code);
+        }
+
         public void WriteBytes(ref Span<byte> bytes)
         {
             var writtenLength = NetworkBitConverter.WriteUnaligned(bytes, code, 2);
 
             bytes = bytes.Slice(writtenLength);
+        }
+
+        public void WriteBytes(MemoryCursor cursor)
+        {
+            var bytes = cursor.Move(2);
+
+            NetworkBitConverter.WriteUnaligned(bytes.Span, code, 2);
         }
 
         public static ExtensionType ServerName { get; } = new ExtensionType(0);

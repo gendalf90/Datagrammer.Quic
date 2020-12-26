@@ -2,13 +2,12 @@
 using Datagrammer.Quic.Protocol.Tls;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Xunit;
 using TlsRecord = Datagrammer.Quic.Protocol.Tls.Record;
 
 namespace Tests.Tls
 {
-    public class EncryptedExtensionsPhaseTests
+    public class EncryptedExtensionsTests
     {
         [Fact]
         public void WriteEncryptedApplicationData_ResultIsExpected()
@@ -60,7 +59,9 @@ namespace Tests.Tls
             var verifyData = GetVerifyData();
             var encryptionData = GetEncryptionData();
             var parsedCertificateEntries = new List<CertificateEntry>();
-            var parsedCertificateData = new Memory<byte>();
+            var parsedSignatureData = new Memory<byte>();
+            var parsedCertificateVerifyScheme = new SignatureScheme();
+            var parsedVerifyData = new Memory<byte>();
 
             using var aead = Cipher.TLS_AES_128_GCM_SHA256.CreateAead(Utils.ParseHexString(encryptionData.Iv), Utils.ParseHexString(encryptionData.Key));
 
@@ -73,23 +74,32 @@ namespace Tests.Tls
                 result &= EncryptedExtensions.TrySlice(cursor);
 
                 result &= Certificate.TryParse(cursor, out var certificate);
-
-                using (certificate.Payload.SetCursor(cursor))
+                foreach (var entry in certificate.Payload.GetCertificateEntryReader(cursor))
                 {
-                    foreach (var entry in new CertificateEntryList(cursor))
-                    {
-                        parsedCertificateEntries.Add(entry);
-                    }
+                    parsedCertificateEntries.Add(entry);
                 }
 
-                parsedCertificateData = parsedCertificateEntries.First().Data.Slice(cursor);
+                result &= CertificateVerify.TryParse(cursor, out var certificateVerify);
+                parsedSignatureData = certificateVerify.Signature.Slice(cursor);
+                parsedCertificateVerifyScheme = certificateVerify.Scheme;
+
+                result &= Finished.TryParse(cursor, out var parsedVerifyDataBuffer);
+                parsedVerifyData = parsedVerifyDataBuffer.Slice(cursor);
+
+                result &= !cursor.HasNext();
             }
+
+            result &= !cursor.HasNext();
 
             //Assert
             Assert.True(result);
             Assert.Equal(RecordType.Handshake, record.Type);
-            Assert.Single(parsedCertificateEntries);
-            Assert.Equal(cerificateData, Utils.ToHexString(parsedCertificateData.ToArray()), true);
+            Assert.Equal(ProtocolVersion.Tls12, record.ProtocolVersion);
+            var certificateEntry = Assert.Single(parsedCertificateEntries);
+            Assert.Equal(cerificateData, Utils.ToHexString(certificateEntry.Data.Slice(cursor).ToArray()), true);
+            Assert.Equal(signatureData, Utils.ToHexString(parsedSignatureData.ToArray()), true);
+            Assert.Equal(SignatureScheme.RSA_PSS_RSAE_SHA256, parsedCertificateVerifyScheme);
+            Assert.Equal(verifyData, Utils.ToHexString(parsedVerifyData.ToArray()), true);
         }
 
         private string GetEncryptedApplicationData()

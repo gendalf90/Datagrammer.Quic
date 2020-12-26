@@ -54,12 +54,12 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new MemoryBuffer(startOffsetOfBody, decryptionContext.ResultBuffer.Length);
         }
 
-        public static WritingContext StartWriting(MemoryCursor cursor, RecordType type)
+        public static WritingContext StartWriting(MemoryCursor cursor)
         {
             var lengthBytes = cursor.Move(2);
-            var startLength = cursor.AsOffset();
+            var startOffset = cursor.AsOffset();
 
-            return new WritingContext(cursor, startLength, lengthBytes.Span, type);
+            return new WritingContext(cursor, startOffset, lengthBytes.Span);
         }
 
         public static EncryptedWritingContext StartEncryptedWriting(
@@ -78,27 +78,22 @@ namespace Datagrammer.Quic.Protocol.Tls
         public readonly ref struct WritingContext
         {
             private readonly MemoryCursor cursor;
-            private readonly int startLength;
+            private readonly int startOffset;
             private readonly Span<byte> lengthBytes;
-            private readonly RecordType type;
 
             public WritingContext(
                 MemoryCursor cursor,
-                int startLength,
-                Span<byte> lengthBytes,
-                RecordType type)
+                int startOffset,
+                Span<byte> lengthBytes)
             {
                 this.cursor = cursor;
-                this.startLength = startLength;
+                this.startOffset = startOffset;
                 this.lengthBytes = lengthBytes;
-                this.type = type;
             }
 
             public void Dispose()
             {
-                type.WriteBytes(cursor);
-
-                var payloadLength = cursor - startLength;
+                var payloadLength = cursor - startOffset;
 
                 if (payloadLength > MaxLength)
                 {

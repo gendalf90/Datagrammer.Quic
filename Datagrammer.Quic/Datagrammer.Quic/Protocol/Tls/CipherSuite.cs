@@ -1,130 +1,69 @@
-﻿using Datagrammer.Quic.Protocol.Error;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+﻿using System;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct CipherSuite
     {
         private readonly ReadOnlyMemory<byte> bytes;
-        private readonly bool isList;
 
-        private CipherSuite(ReadOnlyMemory<byte> bytes, bool isList)
+        private CipherSuite(ReadOnlyMemory<byte> bytes)
         {
             this.bytes = bytes;
-            this.isList = isList;
         }
 
-        public static CipherSuite CreateFromList(IEnumerable<Cipher> ciphers)
+        public static void Write(MemoryCursor cursor, ReadOnlyMemory<Cipher> ciphers)
         {
-            using (var stream = new MemoryStream())
-            {
-                foreach (var cipher in ciphers)
-                {
-                    cipher.WriteBytes(stream);
-                }
+            using var context = ByteVector.StartVectorWriting(cursor, 2..ushort.MaxValue);
 
-                return new CipherSuite(stream.ToArray(), true);
+            foreach (var cipher in ciphers.Span)
+            {
+                cipher.WriteBytes(cursor);
             }
         }
 
-        public static CipherSuite CreateFromSingle(Cipher cipher)
+        public Enumerator GetEnumerator()
         {
-            using (var stream = new MemoryStream())
-            {
-                cipher.WriteBytes(stream);
-
-                return new CipherSuite(stream.ToArray(), false);
-            }
+            return new Enumerator(bytes);
         }
 
-        public bool TrySelectOneCipherFromList(IEnumerable<Cipher> ciphers, out CipherSuite result)
+        public static CipherSuite Parse(MemoryCursor cursor)
         {
-            var remainings = bytes;
-            
-            while (TryParseOneCipher(remainings, out var cipher, out result, out remainings))
-            {
-                if(ciphers.Contains(cipher))
-                {
-                    return true;
-                }
-            }
-            
-            return false;
-        }
+            var buffer = ByteVector.SliceVectorBytes(cursor, 2..ushort.MaxValue);
 
-        private bool TryParseOneCipher(ReadOnlyMemory<byte> data, out Cipher cipher, out CipherSuite suite, out ReadOnlyMemory<byte> remainings)
-        {
-            cipher = new Cipher();
-            suite = new CipherSuite();
-            remainings = data;
-
-            if(data.IsEmpty)
-            {
-                return false;
-            }
-
-            cipher = Cipher.Parse(data, out remainings);
-            suite = new CipherSuite(data.Slice(0, data.Length - remainings.Length), false);
-
-            return true;
-        }
-
-        public bool HasAnyFrom(IEnumerable<Cipher> ciphers)
-        {
-            return TrySelectOneCipherFromList(ciphers, out _);
-        }
-
-        public static CipherSuite ParseList(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
-        {
-            var data = ByteVector.SliceVectorBytes(bytes, 2..ushort.MaxValue, out remainings);
-
-            return new CipherSuite(data, true);
-        }
-
-        public static CipherSuite ParseOne(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
-        {
-            Cipher.Parse(bytes, out remainings);
-
-            return new CipherSuite(bytes.Slice(0, bytes.Length - remainings.Length), false);
-        }
-
-        public void Write(ref Span<byte> destination)
-        {
-            if(isList)
-            {
-                WriteVector(ref destination);
-            }
-            else
-            {
-                WriteBytes(ref destination);
-            }
-        }
-
-        private void WriteBytes(ref Span<byte> destination)
-        {
-            if (!bytes.Span.TryCopyTo(destination))
-            {
-                throw new EncodingException();
-            }
-
-            destination = destination.Slice(bytes.Length);
-        }
-
-        private void WriteVector(ref Span<byte> destination)
-        {
-            var vectorContext = ByteVector.StartVectorWriting(ref destination, 2..ushort.MaxValue);
-
-            WriteBytes(ref destination);
-
-            vectorContext.Complete(ref destination);
+            return new CipherSuite(buffer.Slice(cursor));
         }
 
         public override string ToString()
         {
             return BitConverter.ToString(bytes.ToArray());
+        }
+
+        public ref struct Enumerator
+        {
+            private Cipher? current;
+            private ReadOnlyMemory<byte> remainings;
+
+            public Enumerator(ReadOnlyMemory<byte> bytes)
+            {
+                remainings = bytes;
+                current = null;
+            }
+
+            public Cipher Current => current ?? throw new ArgumentOutOfRangeException(nameof(Current));
+
+            public bool MoveNext()
+            {
+                current = null;
+
+                if(remainings.IsEmpty)
+                {
+                    return false;
+                }
+
+                current = Cipher.Parse(ref remainings);
+
+                return true;
+            }
         }
     }
 }

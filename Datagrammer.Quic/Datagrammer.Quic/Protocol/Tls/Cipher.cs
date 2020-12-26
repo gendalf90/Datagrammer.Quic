@@ -3,6 +3,7 @@ using Datagrammer.Quic.Protocol.Tls.Aeads;
 using Datagrammer.Quic.Protocol.Tls.Hashes;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 
 namespace Datagrammer.Quic.Protocol.Tls
@@ -26,7 +27,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             this.code = code;
         }
 
-        public static Cipher Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static Cipher Parse(ref ReadOnlyMemory<byte> bytes)
         {
             if(bytes.Length < 2)
             {
@@ -36,9 +37,24 @@ namespace Datagrammer.Quic.Protocol.Tls
             var codeBytes = bytes.Slice(0, 2);
             var code = (ushort)NetworkBitConverter.ParseUnaligned(codeBytes.Span);
 
-            remainings = bytes.Slice(2);
+            bytes = bytes.Slice(2);
 
             return new Cipher(code);
+        }
+
+        public static Cipher Parse(MemoryCursor cursor)
+        {
+            var codeBytes = cursor.Move(2);
+            var code = (ushort)NetworkBitConverter.ParseUnaligned(codeBytes.Span);
+
+            return new Cipher(code);
+        }
+
+        public void WriteBytes(MemoryCursor cursor)
+        {
+            var bytes = cursor.Move(2);
+
+            NetworkBitConverter.WriteUnaligned(bytes.Span, code, 2);
         }
 
         public void WriteBytes(ref Span<byte> bytes)
@@ -58,8 +74,8 @@ namespace Datagrammer.Quic.Protocol.Tls
         public static Cipher TLS_AES_256_GCM_SHA384 { get; } = new Cipher(0x1302);
 
         public static Cipher TLS_CHACHA20_POLY1305_SHA256 { get; } = new Cipher(0x1303);
-
-        public static IEnumerable<Cipher> Supported { get; } = new HashSet<Cipher> { TLS_AES_128_GCM_SHA256 };
+        
+        public static ImmutableList<Cipher> Supported { get; } = ImmutableList.Create(TLS_AES_128_GCM_SHA256);
 
         public IHash GetHash()
         {

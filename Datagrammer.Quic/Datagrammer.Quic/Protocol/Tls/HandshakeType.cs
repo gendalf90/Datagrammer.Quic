@@ -33,10 +33,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static bool TrySlice(MemoryCursor cursor, HandshakeType type)
         {
-            if(!cursor.TryPeek(1, out var bytes))
-            {
-                return false;
-            }
+            var bytes = cursor.Peek(1);
 
             if(bytes.Span[0] != type.code)
             {
@@ -64,9 +61,9 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public void WriteBytes(MemoryCursor cursor)
         {
-            var bytes = cursor.Move(1).Span;
+            var bytes = cursor.Move(1);
 
-            bytes[0] = code;
+            bytes.Span[0] = code;
         }
 
         public void WriteBytes(ref Span<byte> bytes)

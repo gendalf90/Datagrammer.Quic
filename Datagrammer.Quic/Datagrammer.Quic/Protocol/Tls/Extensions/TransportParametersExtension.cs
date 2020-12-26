@@ -23,18 +23,18 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
                 return false;
             }
 
-            var payload = ExtensionPayload.Slice(afterTypeBytes, out remainings);
+            var payload = ExtensionLength.Slice(afterTypeBytes, out remainings);
 
             result = new TransportParametersExtension(payload);
 
             return true;
         }
 
-        public static ExtensionPayload.WritingContext StartWriting(ref Span<byte> destination)
+        public static ExtensionLength.WritingContext StartWriting(ref Span<byte> destination)
         {
             ExtensionType.TransportParameters.WriteBytes(ref destination);
 
-            return ExtensionPayload.StartWriting(ref destination);
+            return ExtensionLength.StartWriting(ref destination);
         }
 
         public override string ToString()

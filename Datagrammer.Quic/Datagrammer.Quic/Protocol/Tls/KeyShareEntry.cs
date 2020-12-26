@@ -1,52 +1,30 @@
-﻿using System;
-using System.IO;
-
-namespace Datagrammer.Quic.Protocol.Tls
+﻿namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct KeyShareEntry
     {
-        private readonly NamedGroup group;
-        private readonly ReadOnlyMemory<byte> key;
-
-        public KeyShareEntry(NamedGroup group, ReadOnlyMemory<byte> key)
+        public KeyShareEntry(NamedGroup group, MemoryBuffer key)
         {
-            this.group = group;
-            this.key = key;
+            Group = group;
+            Key = key;
         }
 
-        public static KeyShareEntry Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public NamedGroup Group { get; }
+
+        public MemoryBuffer Key { get; }
+
+        public static KeyShareEntry Parse(MemoryCursor cursor)
         {
-            var group = NamedGroup.Parse(bytes, out remainings);
-            var key = ByteVector.SliceVectorBytes(remainings, 0..ushort.MaxValue, out remainings);
+            var group = NamedGroup.Parse(cursor);
+            var key = ByteVector.SliceVectorBytes(cursor, 0..ushort.MaxValue);
 
             return new KeyShareEntry(group, key);
         }
 
-        public KeyShareEntry GeneratePublicKey()
+        public static ByteVector.CursorWritingContext StartWriting(MemoryCursor cursor, NamedGroup group)
         {
-            var curve = group.GetCurve();
-            var publicKey = curve.GeneratePublicKey(key.Span);
+            group.WriteBytes(cursor);
 
-            return new KeyShareEntry(group, publicKey);
-        }
-
-        public void Write(Stream stream)
-        {
-            group.WriteBytes(stream);
-
-            ByteVector.WriteVector(stream, 0..ushort.MaxValue, key);
-        }
-
-        public static KeyShareEntry GeneratePrivateKey(NamedGroup group)
-        {
-            var curve = group.GetCurve();
-
-            return new KeyShareEntry(group, curve.GeneratePrivateKey());
-        }
-
-        public bool HasSameGroup(KeyShareEntry other)
-        {
-            return group == other.group;
+            return ByteVector.StartVectorWriting(cursor, 0..ushort.MaxValue);
         }
     }
 }

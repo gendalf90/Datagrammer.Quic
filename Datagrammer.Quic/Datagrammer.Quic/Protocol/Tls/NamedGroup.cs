@@ -2,6 +2,7 @@
 using Datagrammer.Quic.Protocol.Tls.Curves;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 
 namespace Datagrammer.Quic.Protocol.Tls
@@ -20,6 +21,14 @@ namespace Datagrammer.Quic.Protocol.Tls
             this.code = code;
         }
 
+        public static NamedGroup Parse(MemoryCursor cursor)
+        {
+            var codeBytes = cursor.Move(2);
+            var code = (ushort)NetworkBitConverter.ParseUnaligned(codeBytes.Span);
+
+            return new NamedGroup(code);
+        }
+
         public static NamedGroup Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             if (bytes.Length < 2)
@@ -33,6 +42,13 @@ namespace Datagrammer.Quic.Protocol.Tls
             remainings = bytes.Slice(2);
 
             return new NamedGroup(code);
+        }
+
+        public void WriteBytes(MemoryCursor cursor)
+        {
+            var bytes = cursor.Move(2);
+
+            NetworkBitConverter.WriteUnaligned(bytes.Span, code, 2);
         }
 
         public void WriteBytes(Stream stream)
@@ -51,7 +67,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static NamedGroup SECP384R1 { get; } = new NamedGroup(0x0018);
 
-        public static IEnumerable<NamedGroup> Supported { get; } = new HashSet<NamedGroup> { X25519 };
+        public static ImmutableList<NamedGroup> Supported { get; } = ImmutableList.Create(X25519);
 
         public ICurve GetCurve()
         {

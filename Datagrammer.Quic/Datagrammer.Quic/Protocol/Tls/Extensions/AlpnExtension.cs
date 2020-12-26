@@ -24,7 +24,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
                 return false;
             }
 
-            var payload = ExtensionVectorPayload.Slice(afterTypeBytes, 2..ushort.MaxValue, out remainings);
+            var payload = ExtensionVectorLength.Slice(afterTypeBytes, 2..ushort.MaxValue, out remainings);
 
             result = new AlpnExtension(payload);
 
@@ -35,7 +35,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
         {
             ExtensionType.ApplicationLayerProtocolNegotiation.WriteBytes(ref destination);
 
-            var context = ExtensionVectorPayload.StartWriting(ref destination, 2..ushort.MaxValue);
+            var context = ExtensionVectorLength.StartWriting(ref destination, 2..ushort.MaxValue);
 
             if (!bytes.Span.TryCopyTo(destination))
             {

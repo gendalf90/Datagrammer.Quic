@@ -5,13 +5,11 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct SessionId : IEquatable<SessionId>
     {
-        private readonly ReadOnlyMemory<byte> rawBytes;
-        private readonly Guid guid;
+        private readonly ValueBuffer buffer;
 
-        private SessionId(ReadOnlyMemory<byte> rawBytes, Guid guid)
+        private SessionId(ValueBuffer buffer)
         {
-            this.rawBytes = rawBytes;
-            this.guid = guid;
+            this.buffer = buffer;
         }
 
         public override bool Equals(object obj)
@@ -21,30 +19,13 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public override int GetHashCode()
         {
-            if (IsGuid)
-            {
-                return guid.GetHashCode();
-            }
-
-            return HashCodeCalculator.Calculate(rawBytes.Span);
+            return buffer.GetHashCode();
         }
 
         public bool Equals(SessionId other)
         {
-            if (other.IsGuid != IsGuid)
-            {
-                return false;
-            }
-
-            if (other.IsGuid && IsGuid)
-            {
-                return other.guid == guid;
-            }
-
-            return rawBytes.Span.SequenceEqual(other.rawBytes.Span);
+            return buffer == other.buffer;
         }
-
-        private bool IsGuid => guid != Guid.Empty;
 
         public static bool operator ==(SessionId first, SessionId second)
         {
@@ -58,43 +39,46 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static SessionId Empty { get; } = new SessionId();
 
-        public static SessionId Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static SessionId Parse(MemoryCursor cursor)
         {
-            var idBytes = ByteVector.SliceVectorBytes(bytes, 0..32, out remainings);
-            var resultGuid = idBytes.Length == 16 ? new Guid(idBytes.Span) : Guid.Empty;
+            var buffer = ByteVector.SliceVectorBytes(cursor, 0..32);
+            var result = new ValueBuffer(buffer.Slice(cursor).Span);
 
-            return new SessionId(idBytes, resultGuid);
+            return new SessionId(result);
         }
 
-        public static SessionId Generate()
+        public static SessionId Parse(ReadOnlyMemory<byte> bytes)
         {
-            return new SessionId(ReadOnlyMemory<byte>.Empty, Guid.NewGuid());
-        }
+            var idBytes = ByteVector.SliceVectorBytes(bytes, 0..32, out var remainings);
 
-        public void WriteBytes(ref Span<byte> bytes)
-        {
-            var context = ByteVector.StartVectorWriting(ref bytes, 0..32);
-
-            var lengthOfValue = IsGuid ? 16 : rawBytes.Length;
-            var isWritingSuccess = IsGuid
-                ? guid.TryWriteBytes(bytes)
-                : rawBytes.Span.TryCopyTo(bytes);
-
-            if (!isWritingSuccess)
+            if(!remainings.IsEmpty)
             {
                 throw new EncodingException();
             }
 
-            bytes = bytes.Slice(lengthOfValue);
+            return new SessionId(new ValueBuffer(idBytes.Span));
+        }
 
-            context.Complete(ref bytes);
+        public static SessionId Generate()
+        {
+            Span<byte> bytes = stackalloc byte[32];
+
+            Guid.NewGuid().TryWriteBytes(bytes.Slice(0, 16));
+            Guid.NewGuid().TryWriteBytes(bytes.Slice(16, 16));
+
+            return new SessionId(new ValueBuffer(bytes));
+        }
+
+        public void WriteBytes(MemoryCursor cursor)
+        {
+            using var context = ByteVector.StartVectorWriting(cursor, 0..32);
+
+            buffer.CopyTo(cursor);
         }
 
         public override string ToString()
         {
-            var bytes = IsGuid ? guid.ToByteArray() : rawBytes.ToArray();
-
-            return BitConverter.ToString(bytes);
+            return buffer.ToString();
         }
     }
 }

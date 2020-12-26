@@ -5,7 +5,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct CertificateVerify
     {
-        private CertificateVerify(SignatureScheme scheme, ReadOnlyMemory<byte> signature)
+        private CertificateVerify(SignatureScheme scheme, MemoryBuffer signature)
         {
             Scheme = scheme;
             Signature = signature;
@@ -13,39 +13,65 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public SignatureScheme Scheme { get; }
 
-        public ReadOnlyMemory<byte> Signature { get; }
+        public MemoryBuffer Signature { get; }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out CertificateVerify result, out ReadOnlyMemory<byte> remainings)
+        public static bool TryParse(MemoryCursor cursor, out CertificateVerify result)
         {
             result = new CertificateVerify();
-            remainings = bytes;
 
-            if (bytes.IsEmpty)
+            if(!HandshakeType.TrySlice(cursor, HandshakeType.CertificateVerify))
             {
                 return false;
             }
 
-            var type = HandshakeType.Parse(bytes, out var afterTypeBytes);
+            var body = HandshakeLength.SliceBytes(cursor);
 
-            if (type != HandshakeType.CertificateVerify)
-            {
-                return false;
-            }
+            using var bodyContext = body.SetCursor(cursor);
 
-            var body = HandshakeLength.SliceHandshakeBytes(afterTypeBytes, out var afterBodyBytes);
-            var scheme = SignatureScheme.Parse(body, out var afterSchemeBytes);
-            var signature = ByteVector.SliceVectorBytes(afterSchemeBytes, 0..ushort.MaxValue, out var afterSignatureBytes);
+            var scheme = SignatureScheme.Parse(cursor);
+            var signature = ByteVector.SliceVectorBytes(cursor, 0..ushort.MaxValue);
 
-            if (!afterSignatureBytes.IsEmpty)
+            if(cursor.HasNext())
             {
                 throw new EncodingException();
             }
 
             result = new CertificateVerify(scheme, signature);
-            remainings = afterBodyBytes;
 
             return true;
         }
+
+        //public static bool TryParse(ReadOnlyMemory<byte> bytes, out CertificateVerify result, out ReadOnlyMemory<byte> remainings)
+        //{
+        //    result = new CertificateVerify();
+        //    remainings = bytes;
+
+        //    if (bytes.IsEmpty)
+        //    {
+        //        return false;
+        //    }
+
+        //    var type = HandshakeType.Parse(bytes, out var afterTypeBytes);
+
+        //    if (type != HandshakeType.CertificateVerify)
+        //    {
+        //        return false;
+        //    }
+
+        //    var body = HandshakeLength.SliceHandshakeBytes(afterTypeBytes, out var afterBodyBytes);
+        //    var scheme = SignatureScheme.Parse(body, out var afterSchemeBytes);
+        //    var signature = ByteVector.SliceVectorBytes(afterSchemeBytes, 0..ushort.MaxValue, out var afterSignatureBytes);
+
+        //    if (!afterSignatureBytes.IsEmpty)
+        //    {
+        //        throw new EncodingException();
+        //    }
+
+        //    result = new CertificateVerify(scheme, signature);
+        //    remainings = afterBodyBytes;
+
+        //    return true;
+        //}
 
         public static HandshakeWritingContext StartWriting(ref Span<byte> destination, SignatureScheme scheme)
         {

@@ -3,7 +3,7 @@ using System;
 
 namespace Datagrammer.Quic.Protocol.Tls.Extensions
 {
-    public static class ExtensionPayload
+    public static class ExtensionLength
     {
         public static ReadOnlyMemory<byte> Slice(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> afterPayloadBytes)
         {
@@ -25,6 +25,17 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             return bytes.Slice(2, payloadLength);
         }
 
+        public static MemoryBuffer Slice(MemoryCursor cursor)
+        {
+            var payloadLengthBytes = cursor.Move(2);
+            var payloadLength = (int)NetworkBitConverter.ParseUnaligned(payloadLengthBytes.Span);
+            var startOffsetOfBody = cursor.AsOffset();
+
+            cursor.Move(payloadLength);
+
+            return new MemoryBuffer(startOffsetOfBody, payloadLength);
+        }
+
         public static WritingContext StartWriting(ref Span<byte> bytes)
         {
             if(bytes.Length < 2)
@@ -37,6 +48,14 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
             bytes = bytes.Slice(2);
 
             return context;
+        }
+
+        public static CursorWritingContext StartWriting(MemoryCursor cursor)
+        {
+            var lengthBytes = cursor.Move(2);
+            var startOffset = cursor.AsOffset();
+
+            return new CursorWritingContext(cursor, startOffset, lengthBytes.Span);
         }
 
         public readonly ref struct WritingContext
@@ -65,6 +84,35 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
                 }
 
                 NetworkBitConverter.WriteUnaligned(start, (ulong)payloadLength, 2);
+            }
+        }
+
+        public readonly ref struct CursorWritingContext
+        {
+            private readonly MemoryCursor cursor;
+            private readonly int startOffset;
+            private readonly Span<byte> lengthBytes;
+
+            public CursorWritingContext(
+                MemoryCursor cursor,
+                int startOffset,
+                Span<byte> lengthBytes)
+            {
+                this.cursor = cursor;
+                this.startOffset = startOffset;
+                this.lengthBytes = lengthBytes;
+            }
+
+            public void Dispose()
+            {
+                var payloadLength = cursor - startOffset;
+
+                if (payloadLength > ushort.MaxValue)
+                {
+                    throw new EncodingException();
+                }
+
+                NetworkBitConverter.WriteUnaligned(lengthBytes, (ulong)payloadLength, 2);
             }
         }
     }

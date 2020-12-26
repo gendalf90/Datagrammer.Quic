@@ -52,5 +52,12 @@ namespace Datagrammer.Quic.Protocol
                 return cursor.Slice();
             }
         }
+
+        public static void CopyTo(this ValueBuffer buffer, MemoryCursor cursor)
+        {
+            var bytes = cursor.Move(buffer.Length);
+
+            buffer.CopyTo(bytes.Span);
+        }
     }
 }

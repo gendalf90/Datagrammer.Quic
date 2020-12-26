@@ -1,93 +1,84 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
-using System;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct ServerHello
     {
         private ServerHello(HandshakeRandom random,
-                            CipherSuite cipherSuite,
+                            Cipher cipher,
                             SessionId sessionId,
-                            ReadOnlyMemory<byte> payload)
+                            MemoryBuffer payload)
         {
             Random = random;
-            CipherSuite = cipherSuite;
+            Cipher = cipher;
             SessionId = sessionId;
             Payload = payload;
         }
 
         public HandshakeRandom Random { get; }
 
-        public CipherSuite CipherSuite { get; }
+        public Cipher Cipher { get; }
 
         public SessionId SessionId { get; }
 
-        public ReadOnlyMemory<byte> Payload { get; }
+        public MemoryBuffer Payload { get; }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out ServerHello result, out ReadOnlyMemory<byte> remainings)
+        public static bool TryParse(MemoryCursor cursor, out ServerHello result)
         {
             result = new ServerHello();
-            remainings = bytes;
 
-            if (bytes.IsEmpty)
+            if (!HandshakeType.TrySlice(cursor, HandshakeType.ServerHello))
             {
                 return false;
             }
 
-            var type = HandshakeType.Parse(bytes, out var afterTypeBytes);
-
-            if(type != HandshakeType.ServerHello)
+            using (HandshakeLength.SliceBytes(cursor).SetCursor(cursor))
             {
-                return false;
+                if (!ProtocolVersion.TryParse(cursor, ProtocolVersion.Tls12))
+                {
+                    throw new EncodingException();
+                }
+
+                var random = HandshakeRandom.Parse(cursor);
+                var sessionId = SessionId.Parse(cursor);
+                var cipher = Cipher.Parse(cursor);
+
+                if (!CompressionMethod.TrySliceEmptyValue(cursor))
+                {
+                    throw new EncodingException();
+                }
+
+                var payload = ByteVector.SliceVectorBytes(cursor, 0..ushort.MaxValue);
+
+                if (cursor.HasNext())
+                {
+                    throw new EncodingException();
+                }
+
+                result = new ServerHello(random, cipher, sessionId, payload);
+
+                return true;
             }
-
-            var body = HandshakeLength.SliceHandshakeBytes(afterTypeBytes, out remainings);
-            var legacyVersion = ProtocolVersion.Parse(body, out var afterLegacyVersionBytes);
-
-            if(legacyVersion != ProtocolVersion.Tls12)
-            {
-                throw new EncodingException();
-            }
-
-            var random = HandshakeRandom.Parse(afterLegacyVersionBytes, out var afterRandomBytes);
-            var sessionId = SessionId.Parse(afterRandomBytes, out var afterSessionIdBytes);
-            var cipherSuite = CipherSuite.ParseOne(afterSessionIdBytes, out var afterCipherSuiteBytes);
-
-            if(!CompressionMethod.CheckForEmptyValue(afterCipherSuiteBytes, out var afterCompressionMethodBytes))
-            {
-                throw new EncodingException();
-            }
-
-            var extensionBytes = ByteVector.SliceVectorBytes(afterCompressionMethodBytes, 0..ushort.MaxValue, out var afterExtensionBytes);
-
-            if(!afterExtensionBytes.IsEmpty)
-            {
-                throw new EncodingException();
-            }
-
-            result = new ServerHello(random, cipherSuite, sessionId, extensionBytes);
-
-            return true;
         }
 
-        public static HandshakeWritingContext StartWriting(ref Span<byte> destination, 
-                                                            HandshakeRandom random,
-                                                            CipherSuite cipherSuite,
-                                                            SessionId sessionId)
+        public static CursorHandshakeWritingContext StartWriting(MemoryCursor cursor,
+                                                                 HandshakeRandom random,
+                                                                 Cipher cipher,
+                                                                 SessionId sessionId)
         {
-            HandshakeType.ServerHello.WriteBytes(ref destination);
+            HandshakeType.ServerHello.WriteBytes(cursor);
 
-            var payloadContext = HandshakeLength.StartWriting(ref destination);
+            var payloadContext = HandshakeLength.StartWriting(cursor);
 
-            ProtocolVersion.Tls12.WriteBytes(ref destination);
-            random.WriteBytes(ref destination);
-            sessionId.WriteBytes(ref destination);
-            cipherSuite.Write(ref destination);
-            CompressionMethod.WriteEmptyValue(ref destination);
+            ProtocolVersion.Tls12.WriteBytes(cursor);
+            random.WriteBytes(cursor);
+            sessionId.WriteBytes(cursor);
+            cipher.WriteBytes(cursor);
+            CompressionMethod.WriteEmptyValue(cursor);
 
-            var extensionsContext = ByteVector.StartVectorWriting(ref destination, 0..ushort.MaxValue);
+            var extensionsContext = ByteVector.StartVectorWriting(cursor, 0..ushort.MaxValue);
 
-            return new HandshakeWritingContext(payloadContext, extensionsContext);
+            return new CursorHandshakeWritingContext(payloadContext, extensionsContext);
         }
     }
 }

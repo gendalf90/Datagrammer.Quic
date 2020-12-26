@@ -14,9 +14,9 @@ namespace Datagrammer.Quic.Protocol.Tls
         public static CertificateEntry Parse(MemoryCursor cursor)
         {
             var data = ByteVector.SliceVectorBytes(cursor, 1..ByteVector.MaxUInt24);
-
+            
             ByteVector.SliceVectorBytes(cursor, 0..ushort.MaxValue);
-
+            
             return new CertificateEntry(data);
         }
 

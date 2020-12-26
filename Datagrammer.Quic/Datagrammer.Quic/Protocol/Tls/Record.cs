@@ -4,43 +4,32 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct Record
     {
-        public Record(RecordType type, MemoryBuffer payload)
+        public Record(RecordType type, ProtocolVersion protocolVersion, MemoryBuffer payload)
         {
             Type = type;
+            ProtocolVersion = protocolVersion;
             Payload = payload;
         }
 
         public RecordType Type { get; }
 
+        public ProtocolVersion ProtocolVersion { get; }
+
         public MemoryBuffer Payload { get; }
 
-        public static bool TryParse(MemoryCursor cursor, out Record result)
+        public static bool TryParse(MemoryCursor cursor, RecordType type, out Record result)
         {
             result = new Record();
 
-            if(!RecordType.TrySlice(cursor, RecordType.ApplicationData))
+            if(!RecordType.TrySlice(cursor, type))
             {
                 return false;
             }
 
-            var legacyVersion = ProtocolVersion.Parse(cursor);
-
-            if (legacyVersion != ProtocolVersion.Tls12)
-            {
-                throw new EncodingException();
-            }
-
+            var protocolVersion = ProtocolVersion.Parse(cursor);
             var body = RecordLength.SliceBytes(cursor);
 
-            using var bodyContext = body.SetCursor(cursor);
-
-            var startOffsetOfBody = cursor.AsOffset();
-
-            cursor.Reverse();
-
-            var actualType = RecordType.ParseReverse(cursor);
-
-            result = new Record(actualType, new MemoryBuffer(startOffsetOfBody, cursor - startOffsetOfBody));
+            result = new Record(type, protocolVersion, body);
 
             return true;
         }
@@ -73,17 +62,17 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             var actualType = RecordType.ParseReverse(cursor);
 
-            result = new Record(actualType, new MemoryBuffer(startOffsetOfBody, cursor - startOffsetOfBody));
+            result = new Record(actualType, legacyVersion, new MemoryBuffer(startOffsetOfBody, cursor - startOffsetOfBody));
 
             return true;
         }
 
-        public static RecordLength.WritingContext StartWriting(MemoryCursor cursor, RecordType type)
+        public static RecordLength.WritingContext StartWriting(MemoryCursor cursor, RecordType type, ProtocolVersion protocolVersion)
         {
-            RecordType.ApplicationData.WriteBytes(cursor);
-            ProtocolVersion.Tls12.WriteBytes(cursor);
+            type.WriteBytes(cursor);
+            protocolVersion.WriteBytes(cursor);
 
-            return RecordLength.StartWriting(cursor, type);
+            return RecordLength.StartWriting(cursor);
         }
 
         public static RecordLength.EncryptedWritingContext StartEncryptedWriting(MemoryCursor cursor, RecordType type, IAead aead, int sequenceNumber)

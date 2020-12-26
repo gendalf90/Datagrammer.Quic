@@ -31,6 +31,14 @@ namespace Datagrammer.Quic.Protocol.Tls
             this.code = code;
         }
 
+        public static SignatureScheme Parse(MemoryCursor cursor)
+        {
+            var bytes = cursor.Move(2);
+            var code = (ushort)NetworkBitConverter.ParseUnaligned(bytes.Span);
+
+            return new SignatureScheme(code);
+        }
+
         public static SignatureScheme Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
         {
             if(bytes.Length < 2)

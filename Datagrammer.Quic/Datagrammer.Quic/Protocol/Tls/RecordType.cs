@@ -14,10 +14,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static bool TrySlice(MemoryCursor cursor, RecordType type)
         {
-            if(!cursor.TryPeek(1, out var bytes))
-            {
-                return false;
-            }
+            var bytes = cursor.Peek(1);
 
             if(bytes.Span[0] != type.code)
             {

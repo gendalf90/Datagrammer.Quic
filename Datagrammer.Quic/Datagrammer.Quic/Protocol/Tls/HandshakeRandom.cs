@@ -5,50 +5,50 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct HandshakeRandom
     {
-        private readonly Guid part1;
-        private readonly Guid part2;
+        private readonly ValueBuffer buffer;
 
-        private HandshakeRandom(Guid part1, Guid part2)
+        private HandshakeRandom(ValueBuffer buffer)
         {
-            this.part1 = part1;
-            this.part2 = part2;
+            this.buffer = buffer;
         }
 
-        public static HandshakeRandom Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static HandshakeRandom Parse(ReadOnlyMemory<byte> bytes)
         {
-            if (bytes.Length < 32)
+            if (bytes.Length != 32)
             {
                 throw new EncodingException();
             }
 
-            var bytesOfPart1 = bytes.Slice(0, 16);
-            var bytesOfPart2 = bytes.Slice(16, 16);
-
-            remainings = bytes.Slice(32);
-
-            return new HandshakeRandom(new Guid(bytesOfPart1.Span), new Guid(bytesOfPart2.Span));
+            return new HandshakeRandom(new ValueBuffer(bytes.Span));
         }
 
-        public void WriteBytes(ref Span<byte> bytes)
+        public static HandshakeRandom Parse(MemoryCursor cursor)
         {
-            if (!part1.TryWriteBytes(bytes))
-            {
-                throw new EncodingException();
-            }
+            var result = new ValueBuffer(cursor.Move(32).Span);
 
-            var destinationOfPart2 = bytes.Slice(16);
+            return new HandshakeRandom(result);
+        }
 
-            if (!part2.TryWriteBytes(destinationOfPart2))
-            {
-                throw new EncodingException();
-            }
+        public void WriteBytes(MemoryCursor cursor)
+        {
+            var bytes = cursor.Move(32);
 
-            bytes = bytes.Slice(32);
+            buffer.CopyTo(bytes.Span);
         }
 
         public static HandshakeRandom Generate()
         {
-            return new HandshakeRandom(Guid.NewGuid(), Guid.NewGuid());
+            Span<byte> bytes = stackalloc byte[32];
+
+            Guid.NewGuid().TryWriteBytes(bytes.Slice(0, 16));
+            Guid.NewGuid().TryWriteBytes(bytes.Slice(16, 16));
+
+            return new HandshakeRandom(new ValueBuffer(bytes));
+        }
+
+        public override string ToString()
+        {
+            return buffer.ToString();
         }
     }
 }
