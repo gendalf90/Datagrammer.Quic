@@ -9,6 +9,8 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct SignatureScheme : IEquatable<SignatureScheme>
     {
+        private static SignatureScheme[] supported = new[] { RSA_PKCS1_SHA256 };
+
         private static Dictionary<ushort, IHash> hashes = new Dictionary<ushort, IHash>
         {
             [0x0401] = Hash.Sha256
@@ -84,7 +86,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static SignatureScheme RSA_PKCS1_SHA1 { get; } = new SignatureScheme(0x0201);
 
-        public static IEnumerable<SignatureScheme> Supported { get; } = new HashSet<SignatureScheme> { RSA_PKCS1_SHA256 };
+        public static ReadOnlyMemory<SignatureScheme> Supported => supported;
 
         public IHash GetHash()
         {

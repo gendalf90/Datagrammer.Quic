@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Immutable;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
@@ -12,11 +11,11 @@ namespace Datagrammer.Quic.Protocol.Tls
             this.bytes = bytes;
         }
 
-        public static void Write(MemoryCursor cursor, ImmutableList<Cipher> ciphers)
+        public static void Write(MemoryCursor cursor, ReadOnlyMemory<Cipher> ciphers)
         {
             using var context = ByteVector.StartVectorWriting(cursor, 2..ushort.MaxValue);
 
-            foreach (var cipher in ciphers)
+            foreach (var cipher in ciphers.Span)
             {
                 cipher.WriteBytes(cursor);
             }

@@ -7,7 +7,6 @@
   <ItemGroup>
     <PackageReference Include="Datagrammer" Version="7.0.2-preview" />
     <PackageReference Include="Portable.BouncyCastle" Version="1.8.9" />
-    <PackageReference Include="System.Collections.Immutable" Version="1.7.1" />
   </ItemGroup>
 
 </Project>

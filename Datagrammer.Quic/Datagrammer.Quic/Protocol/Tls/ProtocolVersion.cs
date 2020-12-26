@@ -1,11 +1,12 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
 using System;
-using System.Collections.Immutable;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct ProtocolVersion : IEquatable<ProtocolVersion>
     {
+        private static ProtocolVersion[] supported = new[] { Tls13 };
+
         private readonly short version;
 
         private ProtocolVersion(short version)
@@ -64,7 +65,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static ProtocolVersion Tls13 { get; } = new ProtocolVersion(3 << 8 | 4);
 
-        public static ImmutableList<ProtocolVersion> Supported { get; } = ImmutableList.Create(Tls13);
+        public static ReadOnlyMemory<ProtocolVersion> Supported => supported;
 
         public bool Equals(ProtocolVersion other)
         {

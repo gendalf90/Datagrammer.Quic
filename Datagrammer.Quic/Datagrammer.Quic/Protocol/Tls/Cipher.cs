@@ -3,12 +3,13 @@ using Datagrammer.Quic.Protocol.Tls.Aeads;
 using Datagrammer.Quic.Protocol.Tls.Hashes;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct Cipher : IEquatable<Cipher>
     {
+        private static Cipher[] supported = new Cipher[] { TLS_AES_128_GCM_SHA256 };
+
         private static Dictionary<ushort, IHash> hashes = new Dictionary<ushort, IHash>
         {
             [0x1301] = Hash.Sha256
@@ -68,8 +69,8 @@ namespace Datagrammer.Quic.Protocol.Tls
         public static Cipher TLS_AES_256_GCM_SHA384 { get; } = new Cipher(0x1302);
 
         public static Cipher TLS_CHACHA20_POLY1305_SHA256 { get; } = new Cipher(0x1303);
-        
-        public static ImmutableList<Cipher> Supported { get; } = ImmutableList.Create(TLS_AES_128_GCM_SHA256);
+
+        public static ReadOnlyMemory<Cipher> Supported => supported;
 
         public IHash GetHash()
         {

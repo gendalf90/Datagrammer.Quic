@@ -2,12 +2,13 @@
 using Datagrammer.Quic.Protocol.Tls.Curves;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
     public readonly struct NamedGroup : IEquatable<NamedGroup>
     {
+        private static NamedGroup[] supported = new[] { X25519 };
+
         private static Dictionary<ushort, ICurve> curves = new Dictionary<ushort, ICurve>
         {
             [0x001D] = new X25519()
@@ -61,7 +62,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static NamedGroup SECP384R1 { get; } = new NamedGroup(0x0018);
 
-        public static ImmutableList<NamedGroup> Supported { get; } = ImmutableList.Create(X25519);
+        public static ReadOnlyMemory<NamedGroup> Supported => supported;
 
         public ICurve GetCurve()
         {
