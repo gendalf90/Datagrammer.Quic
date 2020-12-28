@@ -1,5 +1,4 @@
 ﻿using Datagrammer.Quic.Protocol.Tls;
-using Datagrammer.Quic.Protocol.Tls.Curves;
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;

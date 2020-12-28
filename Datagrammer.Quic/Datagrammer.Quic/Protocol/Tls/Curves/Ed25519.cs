@@ -198,6 +198,22 @@ namespace Datagrammer.Quic.Protocol.Tls.Curves
 
             int cOff = (PrecompSpacing - 1) * PrecompTeeth;
 
+            Span<int> A = stackalloc int[X25519Field.Size];
+            Span<int> B = stackalloc int[X25519Field.Size];
+            Span<int> C = stackalloc int[X25519Field.Size];
+            Span<int> E = stackalloc int[X25519Field.Size];
+            Span<int> F = stackalloc int[X25519Field.Size];
+            Span<int> G = stackalloc int[X25519Field.Size];
+            Span<int> H = stackalloc int[X25519Field.Size];
+
+            Span<int> pdA = stackalloc int[X25519Field.Size];
+            Span<int> pdB = stackalloc int[X25519Field.Size];
+            Span<int> pdC = stackalloc int[X25519Field.Size];
+            Span<int> pdE = stackalloc int[X25519Field.Size];
+            Span<int> pdF = stackalloc int[X25519Field.Size];
+            Span<int> pdG = stackalloc int[X25519Field.Size];
+            Span<int> pdH = stackalloc int[X25519Field.Size];
+
             for (; ; )
             {
                 for (int b = 0; b < PrecompBlocks; ++b)
@@ -219,13 +235,13 @@ namespace Datagrammer.Quic.Protocol.Tls.Curves
                     X25519Field.CSwap(sign, pypx_h, pymx_h);
                     X25519Field.CNegate(sign, pxyd);
 
-                    Span<int> A = stackalloc int[X25519Field.Size];
-                    Span<int> B = stackalloc int[X25519Field.Size];
-                    Span<int> C = stackalloc int[X25519Field.Size];
-                    Span<int> E = ru;
-                    Span<int> F = stackalloc int[X25519Field.Size];
-                    Span<int> G = stackalloc int[X25519Field.Size];
-                    Span<int> H = rv;
+                    A.Clear();
+                    B.Clear();
+                    C.Clear();
+                    E = ru;
+                    F.Clear();
+                    G.Clear();
+                    H = rv;
 
                     X25519Field.Apm(ry, rx, B, A);
                     X25519Field.Mul(A, pymx_h, A);
@@ -245,13 +261,13 @@ namespace Datagrammer.Quic.Protocol.Tls.Curves
                     break;
                 }
 
-                Span<int> pdA = stackalloc int[X25519Field.Size];
-                Span<int> pdB = stackalloc int[X25519Field.Size];
-                Span<int> pdC = stackalloc int[X25519Field.Size];
-                Span<int> pdE = ru;
-                Span<int> pdF = stackalloc int[X25519Field.Size];
-                Span<int> pdG = stackalloc int[X25519Field.Size];
-                Span<int> pdH = rv;
+                pdA.Clear();
+                pdB.Clear();
+                pdC.Clear();
+                pdE = ru;
+                pdF.Clear();
+                pdG.Clear();
+                pdH = rv;
 
                 X25519Field.Sqr(rx, pdA);
                 X25519Field.Sqr(ry, pdB);

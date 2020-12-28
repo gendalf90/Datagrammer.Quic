@@ -1,11 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Datagrammer" Version="7.0.2-preview" />
     <PackageReference Include="Portable.BouncyCastle" Version="1.8.9" />
   </ItemGroup>
 

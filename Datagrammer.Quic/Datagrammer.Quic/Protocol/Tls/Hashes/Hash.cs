@@ -70,7 +70,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Hashes
         {
             var resultBuffer = new byte[HashLength];
 
-            HkdfExpandLabel(handshakeSecret.ToArray(), ClientHandshakeTrafficLabel, helloHash.Span, resultBuffer);
+            HkdfExpandLabel(handshakeSecret.Span, ClientHandshakeTrafficLabel, helloHash.Span, resultBuffer);
 
             return resultBuffer;
         }
@@ -79,7 +79,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Hashes
         {
             var resultBuffer = new byte[HashLength];
 
-            HkdfExpandLabel(handshakeSecret.ToArray(), ServerHandshakeTrafficLabel, helloHash.Span, resultBuffer);
+            HkdfExpandLabel(handshakeSecret.Span, ServerHandshakeTrafficLabel, helloHash.Span, resultBuffer);
 
             return resultBuffer;
         }
@@ -88,7 +88,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Hashes
         {
             var resultBuffer = new byte[KeySize];
 
-            HkdfExpandLabel(handshakeTrafficSecret.ToArray(), KeyLabel, ReadOnlySpan<byte>.Empty, resultBuffer);
+            HkdfExpandLabel(handshakeTrafficSecret.Span, KeyLabel, ReadOnlySpan<byte>.Empty, resultBuffer);
 
             return resultBuffer;
         }
@@ -97,23 +97,22 @@ namespace Datagrammer.Quic.Protocol.Tls.Hashes
         {
             var resultBuffer = new byte[IvSize];
 
-            HkdfExpandLabel(handshakeTrafficSecret.ToArray(), IvLabel, ReadOnlySpan<byte>.Empty, resultBuffer);
+            HkdfExpandLabel(handshakeTrafficSecret.Span, IvLabel, ReadOnlySpan<byte>.Empty, resultBuffer);
 
             return resultBuffer;
         }
 
         public ReadOnlyMemory<byte> CreateVerifyData(ReadOnlyMemory<byte> secret, ReadOnlyMemory<byte> finishedHash)
         {
-            var labelBuffer = new byte[HashLength];
-            var resultBuffer = new byte[HashLength];
+            var buffer = new byte[HashLength];
 
-            HkdfExpandLabel(secret.ToArray(), FinishedLabel, ReadOnlySpan<byte>.Empty, labelBuffer);
-            HkdfExtract(labelBuffer, finishedHash.Span, resultBuffer);
+            HkdfExpandLabel(secret.Span, FinishedLabel, ReadOnlySpan<byte>.Empty, buffer);
+            HkdfExtract(buffer, finishedHash.Span, buffer);
 
-            return resultBuffer;
+            return buffer;
         }
 
-        private void HkdfExpandLabel(byte[] secret, ReadOnlySpan<byte> label, ReadOnlySpan<byte> context, Span<byte> output)
+        private void HkdfExpandLabel(ReadOnlySpan<byte> secret, ReadOnlySpan<byte> label, ReadOnlySpan<byte> context, Span<byte> output)
         {
             Span<byte> labelBuffer = stackalloc byte[LabelMaxSize];
 
@@ -122,46 +121,48 @@ namespace Datagrammer.Quic.Protocol.Tls.Hashes
             HkdfExpand(secret, labelBuffer.Slice(0, labelLength), output);
         }
 
-        private void HkdfExpand(byte[] prk, ReadOnlySpan<byte> info, Span<byte> output)
+        private void HkdfExpand(ReadOnlySpan<byte> prk, ReadOnlySpan<byte> info, Span<byte> output)
         {
             using var algorithm = IncrementalHash.CreateHMAC(algorithmName, prk);
 
-            var currentBlockStart = 0;
-            var currentBlockLength = 0;
-            var currentRemaining = output.Length;
+            Span<byte> buffer = stackalloc byte[HashLength + info.Length + 1];
 
-            for (int i = 1; currentRemaining > 0; i++)
+            var currentInfo = buffer.Slice(HashLength, info.Length + 1);
+            var hkdf = buffer.Slice(0, HashLength);
+
+            ref byte index = ref buffer[info.Length + HashLength];
+
+            info.CopyTo(currentInfo);
+
+            for (index = 1; !output.IsEmpty; index++)
             {
-                Span<byte> currentInfoBuffer = stackalloc byte[currentBlockLength + info.Length + 1];
-                Span<byte> currentBlockBuffer = stackalloc byte[HashLength];
+                HkdfExtract(algorithm, currentInfo, hkdf);
 
-                output.Slice(currentBlockStart, currentBlockLength).CopyTo(currentInfoBuffer);
-                info.CopyTo(currentInfoBuffer.Slice(currentBlockLength));
-                currentInfoBuffer[currentInfoBuffer.Length - 1] = (byte)i;
-                currentBlockLength = HkdfExtract(algorithm, currentInfoBuffer, currentBlockBuffer);
-                currentBlockBuffer.Slice(0, Math.Min(currentBlockLength, currentRemaining)).CopyTo(output.Slice(output.Length - currentRemaining));
-                currentRemaining -= currentBlockLength;
-                currentBlockStart += currentBlockLength;
+                var lengthToOutput = Math.Min(hkdf.Length, output.Length);
+
+                hkdf.Slice(0, lengthToOutput).CopyTo(output);
+
+                output = output.Slice(lengthToOutput);
+
+                currentInfo = buffer;
             }
         }
 
-        private int HkdfExtract(byte[] key, ReadOnlySpan<byte> data, Span<byte> buffer)
+        private void HkdfExtract(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> buffer)
         {
             using var algorithm = IncrementalHash.CreateHMAC(algorithmName, key);
 
-            return HkdfExtract(algorithm, data, buffer);
+            HkdfExtract(algorithm, data, buffer);
         }
 
-        private int HkdfExtract(IncrementalHash algorithm, ReadOnlySpan<byte> data, Span<byte> buffer)
+        private void HkdfExtract(IncrementalHash algorithm, ReadOnlySpan<byte> data, Span<byte> buffer)
         {
             algorithm.AppendData(data);
 
-            if(!algorithm.TryGetHashAndReset(buffer, out var written))
+            if(!algorithm.TryGetHashAndReset(buffer, out _))
             {
                 throw new EncryptionException();
             }
-
-            return written;
         }
 
         private int CreateHkdfLabel(ReadOnlySpan<byte> label, ReadOnlySpan<byte> context, int length, Span<byte> buffer)
@@ -177,9 +178,9 @@ namespace Datagrammer.Quic.Protocol.Tls.Hashes
 
         private void WriteLength(ref Span<byte> bytes, int length)
         {
-            var lengthWrittenBytes = NetworkBitConverter.WriteUnaligned(bytes, (ulong)length, 2);
+            NetworkBitConverter.WriteUnaligned(bytes, (ulong)length, 2);
 
-            bytes = bytes.Slice(lengthWrittenBytes);
+            bytes = bytes.Slice(2);
         }
 
         private void WriteLabel(ref Span<byte> bytes, ReadOnlySpan<byte> label)

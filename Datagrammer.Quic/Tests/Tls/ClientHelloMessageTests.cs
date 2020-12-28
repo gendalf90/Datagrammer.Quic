@@ -45,7 +45,7 @@ namespace Tests.Tls
                     SignatureScheme.RSA_PKCS1_SHA256.WriteBytes(cursor);
                     SignatureScheme.ECDSA_SECP384R1_SHA384.WriteBytes(cursor);
                     SignatureScheme.RSA_PSS_RSAE_SHA384.WriteBytes(cursor);
-                    SignatureScheme.RSA_PKCS1_SHA386.WriteBytes(cursor);
+                    SignatureScheme.RSA_PKCS1_SHA384.WriteBytes(cursor);
                     SignatureScheme.RSA_PSS_RSAE_SHA512.WriteBytes(cursor);
                     SignatureScheme.RSA_PKCS1_SHA512.WriteBytes(cursor);
                     SignatureScheme.RSA_PKCS1_SHA1.WriteBytes(cursor);
@@ -176,7 +176,7 @@ namespace Tests.Tls
                 SignatureScheme.RSA_PKCS1_SHA256,
                 SignatureScheme.ECDSA_SECP384R1_SHA384,
                 SignatureScheme.RSA_PSS_RSAE_SHA384,
-                SignatureScheme.RSA_PKCS1_SHA386,
+                SignatureScheme.RSA_PKCS1_SHA384,
                 SignatureScheme.RSA_PSS_RSAE_SHA512,
                 SignatureScheme.RSA_PKCS1_SHA512,
                 SignatureScheme.RSA_PKCS1_SHA1

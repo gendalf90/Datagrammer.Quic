@@ -78,7 +78,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static SignatureScheme RSA_PSS_RSAE_SHA384 { get; } = new SignatureScheme(0x0805);
 
-        public static SignatureScheme RSA_PKCS1_SHA386 { get; } = new SignatureScheme(0x0501);
+        public static SignatureScheme RSA_PKCS1_SHA384 { get; } = new SignatureScheme(0x0501);
 
         public static SignatureScheme RSA_PSS_RSAE_SHA512 { get; } = new SignatureScheme(0x0806);
 

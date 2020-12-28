@@ -72,6 +72,22 @@ namespace Tests.Tls
         }
 
         [Theory]
+        [InlineData("fb9fc80689b3a5d02c33243bf69a1b1b20705588a794304a6e7120155edf149a", "da75ce1139ac80dae4044da932350cf65c97ccc9e33f1e6f7d2d4b18b736ffd5", "a2067265e7f0652a923d5d72ab0467c46132eeb968b6a32d311c805868548814")]
+        public void CreateServerHandshakeTrafficSecret_TlsAes128GcmSha256_ResultIsExpected(string handshakeSecret, string helloHash, string expectedResult)
+        {
+            //Arrange
+            var hash = Cipher.TLS_AES_128_GCM_SHA256.GetHash();
+            var handshakeSecretBytes = Utils.ParseHexString(handshakeSecret);
+            var helloHashBytes = Utils.ParseHexString(helloHash);
+
+            //Act
+            var result = hash.CreateServerHandshakeTrafficSecret(handshakeSecretBytes, helloHashBytes).ToArray();
+
+            //Assert
+            Assert.Equal(expectedResult, Utils.ToHexString(result), true);
+        }
+
+        [Theory]
         [InlineData("ff0e5b965291c608c1e8cd267eefc0afcc5e98a2786373f0db47b04786d72aea", "7154f314e6be7dc008df2c832baa1d39")]
         [InlineData("a2067265e7f0652a923d5d72ab0467c46132eeb968b6a32d311c805868548814", "844780a7acad9f980fa25c114e43402a")]
         public void CreateHandshakeKey_TlsAes128GcmSha256_ResultIsExpected(string handshakeTrafficSecret, string expectedResult)

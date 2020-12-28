@@ -25,9 +25,9 @@ namespace Datagrammer.Quic.Protocol.Tls.Curves
             n[7] |= 0x40000000U;
         }
 
-        private static void GeneratePrivateKey(RNGCryptoServiceProvider random, Span<byte> k)
+        private static void GeneratePrivateKey(Span<byte> k)
         {
-            random.GetBytes(k);
+            rng.GetBytes(k);
 
             k[0] &= 0xF8;
             k[ScalarSize - 1] &= 0x7F;
@@ -138,7 +138,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Curves
         {
             var buffer = new byte[ScalarSize];
 
-            GeneratePrivateKey(rng, buffer);
+            GeneratePrivateKey(buffer);
 
             return buffer;
         }
