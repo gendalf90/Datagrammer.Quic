@@ -46,7 +46,7 @@ namespace Tests.Tls
             }
 
             //Assert
-            Assert.Equal(expectedData, Utils.ToHexString(cursor.Slice().ToArray()), true);
+            Assert.Equal(expectedData, Utils.ToHexString(cursor.PeekStart().ToArray()), true);
         }
 
         [Fact]

@@ -47,9 +47,7 @@ namespace Datagrammer.Quic.Protocol
         {
             using (buffer.SetCursor(cursor))
             {
-                cursor.Reverse();
-
-                return cursor.Slice();
+                return cursor.PeekEnd();
             }
         }
 

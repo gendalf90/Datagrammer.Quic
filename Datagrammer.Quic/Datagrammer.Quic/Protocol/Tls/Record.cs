@@ -58,7 +58,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             var startOffsetOfBody = cursor.AsOffset();
 
-            cursor.Reverse();
+            cursor.MoveEnd();
 
             var actualType = RecordType.ParseReverse(cursor);
 

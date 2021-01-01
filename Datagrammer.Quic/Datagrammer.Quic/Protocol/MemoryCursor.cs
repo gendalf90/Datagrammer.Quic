@@ -16,9 +16,32 @@ namespace Datagrammer.Quic.Protocol
             limit = Range.All;
         }
 
-        public Memory<byte> Slice()
+        public Memory<byte> PeekStart()
         {
             return buffer[limit.Start..position];
+        }
+
+        public Memory<byte> PeekEnd()
+        {
+            return buffer[position..limit.End];
+        }
+
+        public Memory<byte> MoveStart()
+        {
+            var memory = PeekStart();
+
+            position = limit.Start;
+
+            return memory;
+        }
+
+        public Memory<byte> MoveEnd()
+        {
+            var memory = PeekEnd();
+
+            position = limit.End;
+
+            return memory;
         }
 
         public Memory<byte> Move(int length)
@@ -80,16 +103,6 @@ namespace Datagrammer.Quic.Protocol
             limit = newLimit;
 
             return new LimitContext(this, previousLimit);
-        }
-
-        public void Reset()
-        {
-            position = limit.Start;
-        }
-
-        public void Reverse()
-        {
-            position = limit.End;
         }
 
         private bool TryMove(int length, out Index newPosition, out Range offsetRange, out Memory<byte> offsetBytes)
