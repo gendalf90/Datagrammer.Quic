@@ -4,18 +4,24 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public interface IHash
     {
-        ReadOnlyMemory<byte> CreateHash(ReadOnlyMemory<byte> bytes);
+        ValueBuffer CreateHash(ReadOnlySpan<byte> bytes);
 
-        ReadOnlyMemory<byte> CreateHandshakeSecret(ReadOnlyMemory<byte> sharedSecret);
+        ValueBuffer CreateHandshakeSecret(ValueBuffer sharedSecret);
 
-        ReadOnlyMemory<byte> CreateClientHandshakeTrafficSecret(ReadOnlyMemory<byte> handshakeSecret, ReadOnlyMemory<byte> helloHash);
+        ValueBuffer CreateClientHandshakeTrafficSecret(ValueBuffer handshakeSecret, ValueBuffer helloHash);
 
-        ReadOnlyMemory<byte> CreateServerHandshakeTrafficSecret(ReadOnlyMemory<byte> handshakeSecret, ReadOnlyMemory<byte> helloHash);
+        ValueBuffer CreateServerHandshakeTrafficSecret(ValueBuffer handshakeSecret, ValueBuffer helloHash);
 
-        ReadOnlyMemory<byte> CreateHandshakeKey(ReadOnlyMemory<byte> handshakeTrafficSecret);
+        ValueBuffer CreateKey(ValueBuffer trafficSecret);
 
-        ReadOnlyMemory<byte> CreateHandshakeIv(ReadOnlyMemory<byte> handshakeTrafficSecret);
+        ValueBuffer CreateIv(ValueBuffer trafficSecret);
 
-        ReadOnlyMemory<byte> CreateVerifyData(ReadOnlyMemory<byte> secret, ReadOnlyMemory<byte> finishedHash);
+        ValueBuffer CreateVerifyData(ValueBuffer secret, ValueBuffer finishedHash);
+
+        ValueBuffer CreateMasterSecret(ValueBuffer secret);
+
+        ValueBuffer CreateClientApplicationTrafficSecret(ValueBuffer masterSecret, ValueBuffer handshakeHash);
+
+        ValueBuffer CreateServerApplicationTrafficSecret(ValueBuffer masterSecret, ValueBuffer handshakeHash);
     }
 }

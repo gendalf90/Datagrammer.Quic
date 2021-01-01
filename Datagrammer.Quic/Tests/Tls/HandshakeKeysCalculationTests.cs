@@ -97,7 +97,7 @@ namespace Tests.Tls
             var handshakeTrafficSecretBytes = Utils.ParseHexString(handshakeTrafficSecret);
 
             //Act
-            var result = hash.CreateHandshakeKey(handshakeTrafficSecretBytes).ToArray();
+            var result = hash.CreateKey(handshakeTrafficSecretBytes).ToArray();
 
             //Assert
             Assert.Equal(expectedResult, Utils.ToHexString(result), true);
@@ -113,7 +113,7 @@ namespace Tests.Tls
             var handshakeTrafficSecretBytes = Utils.ParseHexString(handshakeTrafficSecret);
 
             //Act
-            var result = hash.CreateHandshakeIv(handshakeTrafficSecretBytes).ToArray();
+            var result = hash.CreateIv(handshakeTrafficSecretBytes).ToArray();
 
             //Assert
             Assert.Equal(expectedResult, Utils.ToHexString(result), true);

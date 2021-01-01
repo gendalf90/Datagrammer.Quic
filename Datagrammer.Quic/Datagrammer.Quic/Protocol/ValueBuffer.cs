@@ -68,6 +68,18 @@ namespace Datagrammer.Quic.Protocol
 
         public static int MaxLength => 32;
 
+        public static ValueBuffer Empty { get; } = new ValueBuffer();
+
+        public static implicit operator ValueBuffer(Span<byte> bytes)
+        {
+            return new ValueBuffer(bytes);
+        }
+
+        public static implicit operator ValueBuffer(byte[] bytes)
+        {
+            return new ValueBuffer(bytes);
+        }
+
         public static bool operator ==(ValueBuffer first, ValueBuffer second)
         {
             return first.Equals(second);
@@ -78,13 +90,18 @@ namespace Datagrammer.Quic.Protocol
             return !first.Equals(second);
         }
 
-        public override string ToString()
+        public byte[] ToArray()
         {
             var buffer = new byte[length];
 
             CopyTo(buffer);
 
-            return BitConverter.ToString(buffer);
+            return buffer;
+        }
+
+        public override string ToString()
+        {
+            return BitConverter.ToString(ToArray());
         }
     }
 }

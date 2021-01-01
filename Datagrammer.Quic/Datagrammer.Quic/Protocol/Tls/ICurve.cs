@@ -1,13 +1,11 @@
-﻿using System;
-
-namespace Datagrammer.Quic.Protocol.Tls
+﻿namespace Datagrammer.Quic.Protocol.Tls
 {
     public interface ICurve
     {
-        ReadOnlyMemory<byte> GeneratePrivateKey();
+        ValueBuffer GeneratePrivateKey();
 
-        ReadOnlyMemory<byte> GeneratePublicKey(ReadOnlySpan<byte> privateKey);
+        ValueBuffer GeneratePublicKey(ValueBuffer privateKey);
 
-        ReadOnlyMemory<byte> GenerateSharedSecret(ReadOnlySpan<byte> privateKey, ReadOnlySpan<byte> publicKey);
+        ValueBuffer GenerateSharedSecret(ValueBuffer privateKey, ValueBuffer publicKey);
     }
 }

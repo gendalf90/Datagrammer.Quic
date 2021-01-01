@@ -134,31 +134,37 @@ namespace Datagrammer.Quic.Protocol.Tls.Curves
             X25519Field.Encode(y, r, rOff);
         }
 
-        public ReadOnlyMemory<byte> GeneratePrivateKey()
+        public ValueBuffer GeneratePrivateKey()
         {
-            var buffer = new byte[ScalarSize];
+            Span<byte> resultBuffer = stackalloc byte[ScalarSize];
 
-            GeneratePrivateKey(buffer);
+            GeneratePrivateKey(resultBuffer);
 
-            return buffer;
+            return resultBuffer;
         }
 
-        public ReadOnlyMemory<byte> GeneratePublicKey(ReadOnlySpan<byte> privateKey)
+        public ValueBuffer GeneratePublicKey(ValueBuffer privateKey)
         {
-            var buffer = new byte[ScalarSize];
+            Span<byte> resultBuffer = stackalloc byte[ScalarSize];
+            Span<byte> privateKeyBuffer = stackalloc byte[privateKey.Length];
 
-            GeneratePublicKey(privateKey, 0, buffer, 0);
+            privateKey.CopyTo(privateKeyBuffer);
+            GeneratePublicKey(privateKeyBuffer, 0, resultBuffer, 0);
 
-            return buffer;
+            return resultBuffer;
         }
 
-        public ReadOnlyMemory<byte> GenerateSharedSecret(ReadOnlySpan<byte> privateKey, ReadOnlySpan<byte> publicKey)
+        public ValueBuffer GenerateSharedSecret(ValueBuffer privateKey, ValueBuffer publicKey)
         {
-            var buffer = new byte[ScalarSize];
+            Span<byte> resultBuffer = stackalloc byte[ScalarSize];
+            Span<byte> privateKeyBuffer = stackalloc byte[privateKey.Length];
+            Span<byte> publicKeyBuffer = stackalloc byte[publicKey.Length];
 
-            ScalarMult(privateKey, 0, publicKey, 0, buffer, 0);
+            privateKey.CopyTo(privateKeyBuffer);
+            publicKey.CopyTo(publicKeyBuffer);
+            ScalarMult(privateKeyBuffer, 0, publicKeyBuffer, 0, resultBuffer, 0);
 
-            return buffer;
+            return resultBuffer;
         }
     }
 }

@@ -42,7 +42,7 @@ namespace Tests.Tls
             //Act
             var buffer = new byte[TlsBuffer.MaxRecordSize];
             var cursor = buffer.AsSpan();
-            var hashToSign = hash.CreateHash(dataToSign);
+            var hashToSign = hash.CreateHash(dataToSign).ToArray();
 
             privateCertificate.SignHash(hashToSign, ref cursor);
 
@@ -64,7 +64,7 @@ namespace Tests.Tls
             using var publicCertificate = SignatureScheme.RSA_PKCS1_SHA256.CreatePublicCertificate(Utils.ParseHexString(certificateData));
 
             //Act
-            var hashToVerify = hash.CreateHash(dataToSign);
+            var hashToVerify = hash.CreateHash(dataToSign).ToArray();
             var result = publicCertificate.VerifyHash(hashToVerify, Utils.ParseHexString(signatureData));
 
             //Assert
