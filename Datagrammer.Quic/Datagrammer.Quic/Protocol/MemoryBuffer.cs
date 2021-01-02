@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Datagrammer.Quic.Protocol
+﻿namespace Datagrammer.Quic.Protocol
 {
     public readonly struct MemoryBuffer
     {

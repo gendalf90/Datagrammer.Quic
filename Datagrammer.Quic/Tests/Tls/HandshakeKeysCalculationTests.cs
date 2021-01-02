@@ -118,5 +118,19 @@ namespace Tests.Tls
             //Assert
             Assert.Equal(expectedResult, Utils.ToHexString(result), true);
         }
+
+        [Theory]
+        [InlineData("a2067265e7f0652a923d5d72ab0467c46132eeb968b6a32d311c805868548814", "0cd9871cd7a164dce9fbc7f96c0f2978417dfc0c728a3f2096a7de210991a865", "ea6ee176dccc4af1859e9e4e93f797eac9a78ce439301e35275ad43f3cddbde3")]
+        [InlineData("ff0e5b965291c608c1e8cd267eefc0afcc5e98a2786373f0db47b04786d72aea", "22844b930e5e0a59a09d5ac35fc032fc91163b193874a265236e568077378d8b", "976017a77ae47f1658e28f7085fe37d149d1e9c91f56e1aebbe0c6bb054bd92b")]
+        public void CalculateVerifyData_ResultIsExpected(string trafficSecret, string finishedHash, string expectedResult)
+        {
+            //Arrange
+            //Act
+            var hash = SignatureScheme.RSA_PKCS1_SHA256.GetHash();
+            var result = hash.CreateVerifyData(Utils.ParseHexString(trafficSecret), Utils.ParseHexString(finishedHash));
+
+            //Assert
+            Assert.Equal(expectedResult, Utils.ToHexString(result.ToArray()), true);
+        }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using Datagrammer.Quic.Protocol;
 using Datagrammer.Quic.Protocol.Tls;
-using System;
 using System.Text;
 using Xunit;
 

@@ -7,10 +7,10 @@ using TlsRecord = Datagrammer.Quic.Protocol.Tls.Record;
 
 namespace Tests.Tls
 {
-    public class EncryptedExtensionsTests
+    public class ServerHandshakeFinishedTests
     {
         [Fact]
-        public void WriteEncryptedApplicationData_ResultIsExpected()
+        public void WriteEncryptedApplicationData_TLS_AES_128_GCM_SHA256_ResultIsExpected()
         {
             //Arrange
             var expectedData = GetEncryptedApplicationData();
@@ -50,7 +50,7 @@ namespace Tests.Tls
         }
 
         [Fact]
-        public void ReadEncryptedApplicationData_ResultIsExpected()
+        public void ReadEncryptedApplicationData_TLS_AES_128_GCM_SHA256_ResultIsExpected()
         {
             //Arrange
             var messageData = GetEncryptedApplicationData();
