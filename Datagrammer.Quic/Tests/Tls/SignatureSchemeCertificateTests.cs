@@ -1,4 +1,5 @@
-﻿using Datagrammer.Quic.Protocol.Tls;
+﻿using Datagrammer.Quic.Protocol;
+using Datagrammer.Quic.Protocol.Tls;
 using System;
 using System.Text;
 using Xunit;
@@ -18,14 +19,12 @@ namespace Tests.Tls
 
             //Act
             var buffer = new byte[TlsBuffer.MaxRecordSize];
-            var cursor = buffer.AsSpan();
+            var cursor = new MemoryCursor(buffer);
 
-            privateCertificate.WritePublic(ref cursor);
-
-            Array.Resize(ref buffer, buffer.Length - cursor.Length);
+            privateCertificate.WritePublic(cursor);
 
             //Assert
-            Assert.Equal(expectedData, Utils.ToHexString(buffer), true);
+            Assert.Equal(expectedData, Utils.ToHexString(cursor.PeekStart().ToArray()), true);
         }
 
         [Fact]
@@ -41,15 +40,13 @@ namespace Tests.Tls
 
             //Act
             var buffer = new byte[TlsBuffer.MaxRecordSize];
-            var cursor = buffer.AsSpan();
-            var hashToSign = hash.CreateHash(dataToSign).ToArray();
+            var cursor = new MemoryCursor(buffer);
+            var hashToSign = hash.CreateHash(dataToSign);
 
-            privateCertificate.SignHash(hashToSign, ref cursor);
-
-            Array.Resize(ref buffer, buffer.Length - cursor.Length);
+            privateCertificate.SignHash(hashToSign, cursor);
 
             //Assert
-            Assert.Equal(signatureData, Utils.ToHexString(buffer), true);
+            Assert.Equal(signatureData, Utils.ToHexString(cursor.PeekStart().ToArray()), true);
         }
 
         [Fact]
@@ -64,7 +61,7 @@ namespace Tests.Tls
             using var publicCertificate = SignatureScheme.RSA_PKCS1_SHA256.CreatePublicCertificate(Utils.ParseHexString(certificateData));
 
             //Act
-            var hashToVerify = hash.CreateHash(dataToSign).ToArray();
+            var hashToVerify = hash.CreateHash(dataToSign);
             var result = publicCertificate.VerifyHash(hashToVerify, Utils.ParseHexString(signatureData));
 
             //Assert

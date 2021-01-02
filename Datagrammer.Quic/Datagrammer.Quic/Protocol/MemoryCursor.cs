@@ -13,7 +13,7 @@ namespace Datagrammer.Quic.Protocol
             this.buffer = buffer;
 
             position = Index.Start;
-            limit = Range.All;
+            limit = Range.EndAt(buffer.Length);
         }
 
         public Memory<byte> PeekStart()
@@ -135,6 +135,16 @@ namespace Datagrammer.Quic.Protocol
             newPosition = offset;
 
             return true;
+        }
+
+        public bool IsStart()
+        {
+            return position.Equals(limit.Start);
+        }
+
+        public bool IsEnd()
+        {
+            return position.Equals(limit.End);
         }
 
         public int AsOffset()

@@ -34,18 +34,38 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
             }
         }
 
-        public void Encrypt(ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> dataToEncrypt, int sequenceNumber, Span<byte> destination)
+        public CryptingToken StartEncrypting(ReadOnlySpan<byte> data, MemoryCursor cursor)
+        {
+            var resultBuffer = cursor.Move(data.Length + TagLength);
+
+            return new CryptingToken(true, data, resultBuffer.Span);
+        }
+
+        public CryptingToken StartDecrypting(ReadOnlySpan<byte> data, MemoryCursor cursor)
+        {
+            if (data.Length < TagLength)
+            {
+                throw new EncryptionException();
+            }
+
+            var resultBuffer = cursor.Move(data.Length - TagLength);
+
+            return new CryptingToken(false, data, resultBuffer.Span);
+        }
+
+        public void Finish(CryptingToken token)
         {
             try
             {
-                Span<byte> nonce = stackalloc byte[NonceLength];
-
-                BuildNonce(iv, sequenceNumber, nonce);
-
-                var destinationData = destination.Slice(0, dataToEncrypt.Length);
-                var destinationTag = destination.Slice(dataToEncrypt.Length, TagLength);
-
-                algorithm.Encrypt(nonce, dataToEncrypt, destinationData, destinationTag, associatedData);
+                if(token.IsEncrypting)
+                {
+                    Encrypt(token);
+                }
+                
+                if(token.IsDecrypting)
+                {
+                    Decrypt(token);
+                }
             }
             catch (Exception e)
             {
@@ -53,48 +73,33 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
             }
         }
 
-        public void Decrypt(ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> dataToDecrypt, int sequenceNumber, Span<byte> destination)
+        private void Encrypt(CryptingToken token)
         {
-            try
-            {
-                Span<byte> nonce = stackalloc byte[NonceLength];
+            Span<byte> nonce = stackalloc byte[NonceLength];
 
-                BuildNonce(iv, sequenceNumber, nonce);
+            BuildNonce(iv, token.SequenceNumber, nonce);
 
-                var tag = dataToDecrypt.Slice(dataToDecrypt.Length - TagLength, TagLength);
-                var data = dataToDecrypt.Slice(0, dataToDecrypt.Length - tag.Length);
-                var destinationData = destination.Slice(0, data.Length);
+            var destinationData = token.Result.Slice(0, token.Source.Length);
+            var destinationTag = token.Result.Slice(token.Source.Length, TagLength);
 
-                algorithm.Decrypt(nonce, data, tag, destinationData, associatedData);
-            }
-            catch (Exception e)
-            {
-                throw new EncryptionException("", e);
-            }
+            algorithm.Encrypt(nonce, token.Source, destinationData, destinationTag, token.AssociatedData);
+        }
+
+        private void Decrypt(CryptingToken token)
+        {
+            Span<byte> nonce = stackalloc byte[NonceLength];
+
+            BuildNonce(iv, token.SequenceNumber, nonce);
+
+            var tag = token.Source.Slice(token.Source.Length - TagLength);
+            var data = token.Source.Slice(0, token.Source.Length - TagLength);
+
+            algorithm.Decrypt(nonce, data, tag, token.Result, token.AssociatedData);
         }
 
         public void Dispose()
         {
             algorithm.Dispose();
-        }
-
-        public EncryptingContext StartEncrypting(ReadOnlySpan<byte> dataToEncrypt, MemoryCursor cursor)
-        {
-            var buffer = cursor.Move(dataToEncrypt.Length + TagLength);
-
-            return new EncryptingContext(true, this, dataToEncrypt, buffer.Span);
-        }
-
-        public EncryptingContext StartDecrypting(ReadOnlySpan<byte> dataToDecrypt, MemoryCursor cursor)
-        {
-            if(dataToDecrypt.Length < TagLength)
-            {
-                throw new EncryptionException();
-            }
-
-            var buffer = cursor.Move(dataToDecrypt.Length - TagLength);
-
-            return new EncryptingContext(false, this, dataToDecrypt, buffer.Span);
         }
     }
 }

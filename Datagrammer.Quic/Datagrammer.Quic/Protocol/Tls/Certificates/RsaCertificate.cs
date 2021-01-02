@@ -27,7 +27,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Certificates
             certificate = new X509Certificate2(data.ToArray());
         }
 
-        public void SignHash(ReadOnlyMemory<byte> hash, ref Span<byte> destination)
+        public void SignHash(ValueBuffer hash, MemoryCursor cursor)
         {
             var privateKey = certificate.GetRSAPrivateKey();
 
@@ -36,15 +36,21 @@ namespace Datagrammer.Quic.Protocol.Tls.Certificates
                 throw new EncryptionException();
             }
 
-            if(!privateKey.TrySignHash(hash.Span, destination, hashAlgorithm, signaturePadding, out var written))
+            Span<byte> hashBuffer = stackalloc byte[hash.Length];
+
+            hash.CopyTo(hashBuffer);
+
+            var destination = cursor.PeekEnd();
+
+            if(!privateKey.TrySignHash(hashBuffer, destination.Span, hashAlgorithm, signaturePadding, out var written))
             {
                 throw new EncryptionException();
             }
 
-            destination = destination.Slice(written);
+            cursor.Move(written);
         }
 
-        public bool VerifyHash(ReadOnlyMemory<byte> hash, ReadOnlyMemory<byte> signature)
+        public bool VerifyHash(ValueBuffer hash, ReadOnlySpan<byte> signature)
         {
             var publicKey = certificate.GetRSAPublicKey();
 
@@ -53,19 +59,16 @@ namespace Datagrammer.Quic.Protocol.Tls.Certificates
                 throw new EncryptionException();
             }
 
-            return publicKey.VerifyHash(hash.Span, signature.Span, hashAlgorithm, signaturePadding);
+            Span<byte> hashBuffer = stackalloc byte[hash.Length];
+
+            hash.CopyTo(hashBuffer);
+
+            return publicKey.VerifyHash(hashBuffer, signature, hashAlgorithm, signaturePadding);
         }
 
-        public void WritePublic(ref Span<byte> destination)
+        public void WritePublic(MemoryCursor cursor)
         {
-            var raw = certificate.RawData.AsSpan();
-
-            if (!raw.TryCopyTo(destination))
-            {
-                throw new EncryptionException();
-            }
-
-            destination = destination.Slice(raw.Length);
+            certificate.RawData.CopyTo(cursor);
         }
 
         public void Dispose()

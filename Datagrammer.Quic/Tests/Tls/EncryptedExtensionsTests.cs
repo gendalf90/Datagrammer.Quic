@@ -86,10 +86,10 @@ namespace Tests.Tls
                 result &= Finished.TryParse(cursor, out var parsedVerifyDataBuffer);
                 parsedVerifyData = parsedVerifyDataBuffer.Slice(cursor);
 
-                result &= !cursor.HasNext();
+                result &= cursor.IsEnd();
             }
 
-            result &= !cursor.HasNext();
+            result &= cursor.IsEnd();
 
             //Assert
             Assert.True(result);

@@ -50,7 +50,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
                 var payload = ByteVector.SliceVectorBytes(cursor, 0..ushort.MaxValue);
 
-                if (cursor.HasNext())
+                if (!cursor.IsEnd())
                 {
                     throw new EncodingException();
                 }

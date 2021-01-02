@@ -74,13 +74,13 @@ namespace Tests.Tls
                         supportedVersion = ProtocolVersion.Parse(cursor);
                     }
 
-                    result &= !cursor.HasNext();
+                    result &= cursor.IsEnd();
                 }
 
-                result &= !cursor.HasNext();
+                result &= cursor.IsEnd();
             }
 
-            result &= !cursor.HasNext();
+            result &= cursor.IsEnd();
 
             //Assert
             Assert.True(result);

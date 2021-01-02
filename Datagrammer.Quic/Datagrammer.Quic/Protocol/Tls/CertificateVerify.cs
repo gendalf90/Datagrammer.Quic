@@ -30,7 +30,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             var scheme = SignatureScheme.Parse(cursor);
             var signature = ByteVector.SliceVectorBytes(cursor, 0..ushort.MaxValue);
 
-            if(cursor.HasNext())
+            if(!cursor.IsEnd())
             {
                 throw new EncodingException();
             }

@@ -140,13 +140,13 @@ namespace Tests.Tls
                         supportedVersions.Add(version);
                     }
 
-                    result &= !cursor.HasNext();
+                    result &= cursor.IsEnd();
                 }
 
-                result &= !cursor.HasNext();
+                result &= cursor.IsEnd();
             }
 
-            result &= !cursor.HasNext();
+            result &= cursor.IsEnd();
 
             //Assert
             Assert.True(result);

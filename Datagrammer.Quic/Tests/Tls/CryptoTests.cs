@@ -27,12 +27,15 @@ namespace Tests.Tls
 
             //Act
             var cursor = new MemoryCursor(buffer);
-            var context = aead.StartEncrypting(messageBytes, cursor);
+            var token = aead.StartEncrypting(messageBytes, cursor);
 
-            context.Complete(headerBytes, seq);
+            token.SequenceNumber = seq;
+            token.AssociatedData = headerBytes;
+
+            aead.Finish(token);
 
             //Assert
-            Assert.Equal(expected, Utils.ToHexString(context.ResultBuffer.ToArray()), true);
+            Assert.Equal(expected, Utils.ToHexString(token.Result.ToArray()), true);
         }
 
         [Theory]
@@ -56,12 +59,15 @@ namespace Tests.Tls
 
             //Act
             var cursor = new MemoryCursor(buffer);
-            var context = aead.StartDecrypting(messageBytes, cursor);
+            var token = aead.StartDecrypting(messageBytes, cursor);
 
-            context.Complete(headerBytes, seq);
+            token.SequenceNumber = seq;
+            token.AssociatedData = headerBytes;
+
+            aead.Finish(token);
 
             //Assert
-            Assert.Equal(expected, Utils.ToHexString(context.ResultBuffer.ToArray()), true);
+            Assert.Equal(expected, Utils.ToHexString(token.Result.ToArray()), true);
         }
     }
 }

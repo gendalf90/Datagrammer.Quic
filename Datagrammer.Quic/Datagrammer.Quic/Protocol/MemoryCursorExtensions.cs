@@ -33,16 +33,6 @@ namespace Datagrammer.Quic.Protocol
             bytes.Span.CopyTo(cursor);
         }
 
-        public static bool HasNext(this MemoryCursor cursor)
-        {
-            return cursor.TryPeek(1, out _);
-        }
-
-        public static bool HasPrevious(this MemoryCursor cursor)
-        {
-            return cursor.TryPeek(-1, out _);
-        }
-
         public static Memory<byte> Slice(this MemoryBuffer buffer, MemoryCursor cursor)
         {
             using (buffer.SetCursor(cursor))

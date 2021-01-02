@@ -48,7 +48,7 @@ namespace Datagrammer.Quic.Protocol
             {
                 hasValue = false;
 
-                if (!cursor.HasNext())
+                if (cursor.IsEnd())
                 {
                     return false;
                 }

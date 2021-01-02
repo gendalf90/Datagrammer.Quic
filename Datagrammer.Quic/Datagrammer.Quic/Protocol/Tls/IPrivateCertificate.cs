@@ -4,8 +4,8 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public interface IPrivateCertificate : IDisposable
     {
-        void WritePublic(ref Span<byte> destination);
+        void WritePublic(MemoryCursor cursor);
 
-        void SignHash(ReadOnlyMemory<byte> hash, ref Span<byte> destination);
+        void SignHash(ValueBuffer hash, MemoryCursor cursor);
     }
 }
