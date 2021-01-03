@@ -1,10 +1,15 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
 using System;
 
-namespace Datagrammer.Quic.Protocol
+namespace Datagrammer.Quic.Protocol.Packet
 {
-    internal static class VariableLengthEncoding
+    public static class VariableLengthEncoding
     {
+        private const byte MaxByte = 0x3f;
+        private const ushort MaxUshort = 0x3fff;
+        private const uint MaxUint = 0x3fffffff;
+        private const ulong MaxUlong = 0x3fffffffffffffff;
+
         public static int Decode32(ReadOnlySpan<byte> bytes, out int decodedLength)
         {
             var value = Decode(bytes, out decodedLength);
@@ -36,53 +41,51 @@ namespace Datagrammer.Quic.Protocol
                 throw new EncodingException();
             }
 
-            var length = (int)Math.Pow(2, bytes[0] >> 6);
+            var first = bytes[0];
+            var prefix = first >> 6;
+            var length = 1 << prefix;
 
             if (bytes.Length < length)
             {
                 throw new EncodingException();
             }
 
-            var bytesToDecode = bytes.Slice(0, length);
-            var decodedValue = NetworkBitConverter.ParseUnaligned(bytesToDecode);
+            long result = first & MaxByte;
 
-            decodedValue &= ulong.MaxValue >> (64 - length * 8 + 2);
+            foreach (var toAddByte in bytes.Slice(1, length - 1))
+            {
+                result = (result << 8) + toAddByte;
+            }
+
             decodedLength = length;
 
-            return decodedValue;
+            return (ulong)result;
         }
 
         public static void Encode(Span<byte> destination, ulong value, out int encodedLength)
         {
-            if(value > ulong.MaxValue >> 2)
+            if (value > MaxUlong)
             {
                 throw new EncodingException();
             }
 
-            var length = 8;
+            var length = value switch
+            {
+                <= MaxByte => 1,
+                <= MaxUshort => 2,
+                <= MaxUint => 4,
+                _ => 8
+            };
 
-            if(value <= byte.MaxValue >> 2)
-            {
-                length = 1;
-            }
-            else if(value <= ushort.MaxValue >> 2)
-            {
-                length = 2;
-            }
-            else if(value <= uint.MaxValue >> 2)
-            {
-                length = 4;
-            }
-
-            if(destination.Length < length)
+            if (destination.Length < length)
             {
                 throw new EncodingException();
             }
 
-            var encodedLengthValue = (ulong)Math.Log(length, 2);
-            var valueToEncode = value | encodedLengthValue << (length * 8 - 2);
+            var lengthToEncode = (ulong)NetworkBitConverter.GetBitLength((ulong)length) - 1;
+            var valueToEncode = value | lengthToEncode << (length * 8 - 2);
 
-            encodedLength = NetworkBitConverter.WriteUnaligned(destination, valueToEncode);
+            encodedLength = NetworkBitConverter.WriteUnaligned(destination, valueToEncode, length);
         }
     }
 }

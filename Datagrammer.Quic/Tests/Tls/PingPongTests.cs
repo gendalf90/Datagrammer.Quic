@@ -67,6 +67,8 @@ namespace Tests.Tls
 
             //Assert
             Assert.True(result);
+            Assert.Equal(RecordType.ApplicationData, record.Type);
+            Assert.Equal(ProtocolVersion.Tls12, record.ProtocolVersion);
             Assert.Equal(decryptedPayload, Utils.ToHexString(decryptedResult.ToArray()), true);
         }
     }

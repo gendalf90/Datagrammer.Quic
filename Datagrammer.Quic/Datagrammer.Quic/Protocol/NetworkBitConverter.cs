@@ -1,10 +1,9 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
 using System;
-using System.IO;
 
 namespace Datagrammer.Quic.Protocol
 {
-    internal static class NetworkBitConverter
+    public static class NetworkBitConverter
     {
         public static ulong ParseUnaligned(ReadOnlySpan<byte> bytes)
         {
@@ -42,23 +41,24 @@ namespace Datagrammer.Quic.Protocol
 
         public static int GetByteLength(ulong value)
         {
-            var length = 0;
+            var length = 1;
 
-            for (ulong i = value; i > 0; i >>= 8)
+            while ((value >>= 8) > 0)
             {
                 length++;
             }
 
-            return length == 0 ? 1 : length;
+            return length;
         }
 
         public static int GetBitLength(ulong value)
         {
             var length = 0;
 
-            for (ulong i = value; i > 0; i >>= 1)
+            while (value > 0)
             {
                 length++;
+                value >>= 1;
             }
 
             return length;
