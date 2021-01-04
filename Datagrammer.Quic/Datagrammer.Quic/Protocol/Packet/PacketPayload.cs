@@ -20,6 +20,16 @@ namespace Datagrammer.Quic.Protocol.Packet
             return afterLengthBytes.Slice(0, length);
         }
 
+        public static MemoryBuffer SlicePacketBytes(MemoryCursor cursor)
+        {
+            var length = cursor.DecodeVariable32();
+            var startOffsetOfPayload = cursor.AsOffset();
+
+            cursor.Move(length);
+
+            return new MemoryBuffer(startOffsetOfPayload, length);
+        }
+
         public static WritingContext StartPacketWriting(ref Span<byte> bytes)
         {
             if(bytes.Length < 4)
@@ -32,6 +42,11 @@ namespace Datagrammer.Quic.Protocol.Packet
             bytes = bytes.Slice(4);
 
             return context;
+        }
+
+        public static CursorWritingContext StartPacketWriting(MemoryCursor cursor)
+        {
+            return new CursorWritingContext(cursor, cursor.AsOffset());
         }
 
         public readonly ref struct WritingContext
@@ -62,6 +77,30 @@ namespace Datagrammer.Quic.Protocol.Packet
                 payload.CopyTo(afterLengthBytes);
 
                 bytes = start.Slice(encodedLength + payloadLength);
+            }
+        }
+
+        public readonly ref struct CursorWritingContext
+        {
+            private readonly MemoryCursor cursor;
+            private readonly int startOffset;
+
+            public CursorWritingContext(MemoryCursor cursor, int startOffset)
+            {
+                this.cursor = cursor;
+                this.startOffset = startOffset;
+            }
+
+            public void Dispose()
+            {
+                var payloadLength = cursor - startOffset;
+                var payload = cursor.Move(-payloadLength);
+
+                Span<byte> payloadBuffer = stackalloc byte[payloadLength];
+
+                payload.Span.CopyTo(payloadBuffer);
+                cursor.EncodeVariable32(payloadLength);
+                payloadBuffer.CopyTo(cursor);
             }
         }
     }

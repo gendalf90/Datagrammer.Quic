@@ -1,5 +1,4 @@
-﻿using Datagrammer.Quic.Protocol.Error;
-using System;
+﻿using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
@@ -39,35 +38,26 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public static PacketToken Empty { get; } = new PacketToken();
 
-        public static PacketToken Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static PacketToken Parse(MemoryCursor cursor)
         {
-            var tokenLength = VariableLengthEncoding.Decode32(bytes.Span, out var decodedBytesLength);
-            var afterLengthBytes = bytes.Slice(decodedBytesLength);
+            var length = cursor.DecodeVariable32();
+            var bytes = cursor.Move(length);
 
-            if (afterLengthBytes.Length < tokenLength)
-            {
-                throw new EncodingException();
-            }
-
-            var tokenBytes = afterLengthBytes.Slice(0, tokenLength);
-
-            remainings = afterLengthBytes.Slice(tokenLength);
-
-            return new PacketToken(tokenBytes);
+            return new PacketToken(bytes);
         }
 
-        public void WriteBytes(ref Span<byte> destination)
+        [Obsolete]
+        public static PacketToken Parse(ReadOnlyMemory<byte> input, out ReadOnlyMemory<byte> output)
         {
-            VariableLengthEncoding.Encode(destination, (ulong)bytes.Length, out var encodedLength);
+            output = default;
 
-            var afterLengthBytes = destination.Slice(encodedLength);
+            return default;
+        }
 
-            if (!bytes.Span.TryCopyTo(afterLengthBytes))
-            {
-                throw new EncodingException();
-            }
-
-            destination = afterLengthBytes.Slice(bytes.Length);
+        public void WriteBytes(MemoryCursor cursor)
+        {
+            cursor.EncodeVariable32(bytes.Length);
+            bytes.CopyTo(cursor);
         }
     }
 }

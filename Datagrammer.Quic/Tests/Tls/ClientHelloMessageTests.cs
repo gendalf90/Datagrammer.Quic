@@ -183,7 +183,7 @@ namespace Tests.Tls
             }, signatureSchemes);
             var keyShareEntry = Assert.Single(keyShareEntries);
             Assert.Equal(NamedGroup.X25519, keyShareEntry.Group);
-            Assert.True(GetBytesOfPublicKey().AsSpan().SequenceEqual(keyShareEntry.Key.Slice(cursor).Span));
+            Assert.True(GetBytesOfPublicKey().AsSpan().SequenceEqual(keyShareEntry.Key.AsMemory(cursor).Span));
             var pskMode = Assert.Single(pskModes);
             Assert.Equal(PskKeyExchangeMode.PskDheKe, pskMode);
             var supportedVersion = Assert.Single(supportedVersions);

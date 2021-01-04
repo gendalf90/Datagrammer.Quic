@@ -49,6 +49,11 @@ namespace Datagrammer.Quic.Protocol.Packet
             return bytes.Slice(0, numberLength);
         }
 
+        public ReadOnlyMemory<byte> SlicePacketNumberBytes(MemoryCursor cursor)
+        {
+            return cursor.Move(numberLength);
+        }
+
         public static PacketFirstByte Parse(byte first)
         {
             var isFixedBitValid = Convert.ToBoolean((first >> 6) & 1);

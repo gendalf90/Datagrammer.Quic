@@ -27,6 +27,13 @@ namespace Datagrammer.Quic.Protocol.Packet
             return new PacketNumber(value);
         }
 
+        public static PacketNumber ParseVariable(MemoryCursor cursor)
+        {
+            var value = cursor.DecodeVariable();
+
+            return new PacketNumber(value);
+        }
+
         public int Write(ref Span<byte> destination)
         {
             var valueToWrite = value & uint.MaxValue;
@@ -37,11 +44,26 @@ namespace Datagrammer.Quic.Protocol.Packet
             return writtenLength;
         }
 
+        public int Write(MemoryCursor cursor)
+        {
+            var bytes = cursor.PeekEnd();
+            var length = NetworkBitConverter.WriteUnaligned(bytes.Span, value);
+
+            cursor.Move(length);
+
+            return length;
+        }
+
         public void WriteVariable(Span<byte> destination, out Span<byte> remainings)
         {
             VariableLengthEncoding.Encode(destination, value, out var encodedLength);
 
             remainings = destination.Slice(encodedLength);
+        }
+
+        public void WriteVariable(MemoryCursor cursor)
+        {
+            cursor.EncodeVariable(value);
         }
 
         public PacketNumber DecodeByLargestAcknowledged(PacketNumber largestAcknowledged)
@@ -71,10 +93,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             return new PacketNumber(value + 1);
         }
 
-        public static PacketNumber Initial()
-        {
-            return new PacketNumber(0);
-        }
+        public static PacketNumber Initial { get; } = new PacketNumber(0);
 
         public bool Equals(PacketNumber other)
         {

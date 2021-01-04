@@ -61,9 +61,9 @@ namespace Datagrammer.Quic.Protocol.Tls
         public static CursorWritingContext StartWriting(MemoryCursor cursor)
         {
             var lengthBytes = cursor.Move(3).Span;
-            var startLength = cursor.AsOffset();
+            var startOffset = cursor.AsOffset();
 
-            return new CursorWritingContext(cursor, startLength, lengthBytes);
+            return new CursorWritingContext(cursor, startOffset, lengthBytes);
         }
 
         public readonly ref struct WritingContext
@@ -98,22 +98,22 @@ namespace Datagrammer.Quic.Protocol.Tls
         public readonly ref struct CursorWritingContext
         {
             private readonly MemoryCursor cursor;
-            private readonly int startLength;
+            private readonly int startOffset;
             private readonly Span<byte> lengthBytes;
 
             public CursorWritingContext(
                 MemoryCursor cursor,
-                int startLength,
+                int startOffset,
                 Span<byte> lengthBytes)
             {
                 this.cursor = cursor;
-                this.startLength = startLength;
+                this.startOffset = startOffset;
                 this.lengthBytes = lengthBytes;
             }
 
             public void Dispose()
             {
-                var payloadLength = cursor - startLength;
+                var payloadLength = cursor - startOffset;
 
                 if (payloadLength > MaxLength)
                 {

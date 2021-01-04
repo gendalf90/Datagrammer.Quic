@@ -80,11 +80,11 @@ namespace Tests.Tls
                 }
 
                 result &= CertificateVerify.TryParse(cursor, out var certificateVerify);
-                parsedSignatureData = certificateVerify.Signature.Slice(cursor);
+                parsedSignatureData = certificateVerify.Signature.AsMemory(cursor);
                 parsedCertificateVerifyScheme = certificateVerify.Scheme;
 
                 result &= Finished.TryParse(cursor, out var parsedVerifyDataBuffer);
-                parsedVerifyData = parsedVerifyDataBuffer.Slice(cursor);
+                parsedVerifyData = parsedVerifyDataBuffer.AsMemory(cursor);
 
                 result &= cursor.IsEnd();
             }
@@ -96,7 +96,7 @@ namespace Tests.Tls
             Assert.Equal(RecordType.Handshake, record.Type);
             Assert.Equal(ProtocolVersion.Tls12, record.ProtocolVersion);
             var certificateEntry = Assert.Single(parsedCertificateEntries);
-            Assert.Equal(cerificateData, Utils.ToHexString(certificateEntry.Data.Slice(cursor).ToArray()), true);
+            Assert.Equal(cerificateData, Utils.ToHexString(certificateEntry.Data.AsMemory(cursor).ToArray()), true);
             Assert.Equal(signatureData, Utils.ToHexString(parsedSignatureData.ToArray()), true);
             Assert.Equal(SignatureScheme.RSA_PSS_RSAE_SHA256, parsedCertificateVerifyScheme);
             Assert.Equal(verifyData, Utils.ToHexString(parsedVerifyData.ToArray()), true);

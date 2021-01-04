@@ -1,24 +1,22 @@
-﻿using Datagrammer.Quic.Protocol.Error;
-using System;
+﻿using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
     public readonly struct PacketVersion : IEquatable<PacketVersion>
     {
-        private readonly byte first;
-        private readonly byte second;
-        private readonly byte third;
-        private readonly byte fourth;
+        private readonly int value;
 
         private PacketVersion(byte first,
                               byte second,
                               byte third,
                               byte fourth)
         {
-            this.first = first;
-            this.second = second;
-            this.third = third;
-            this.fourth = fourth;
+            value = (first << 24) | (second << 16) | (third << 8) | fourth;
+        }
+
+        private PacketVersion(int value)
+        {
+            this.value = value;
         }
 
         public override bool Equals(object obj)
@@ -28,12 +26,12 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public override int GetHashCode()
         {
-            return ToInt().GetHashCode();
+            return value;
         }
 
         public bool Equals(PacketVersion other)
         {
-            return ToInt() == other.ToInt();
+            return value == other.value;
         }
 
         public static bool operator ==(PacketVersion first, PacketVersion second)
@@ -46,44 +44,32 @@ namespace Datagrammer.Quic.Protocol.Packet
             return !first.Equals(second);
         }
 
-        private int ToInt()
+        public static PacketVersion Parse(MemoryCursor cursor)
         {
-            return (first << 24) | (second << 16) | (third << 8) | fourth;
+            var bytes = cursor.Move(4);
+            var value = NetworkBitConverter.ParseUnaligned(bytes.Span);
+
+            return new PacketVersion((int)value);
         }
 
-        public static PacketVersion Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        [Obsolete]
+        public static PacketVersion Parse(ReadOnlyMemory<byte> input, out ReadOnlyMemory<byte> output)
         {
-            if (bytes.Length < 4)
-            {
-                throw new EncodingException();
-            }
+            output = default;
 
-            var bytesSpan = bytes.Span;
-
-            remainings = bytes.Slice(4);
-
-            return new PacketVersion(bytesSpan[0], bytesSpan[1], bytesSpan[2], bytesSpan[3]);
+            return default;
         }
 
-        public void WriteBytes(ref Span<byte> destination)
+        public void WriteBytes(MemoryCursor cursor)
         {
-            if(destination.Length < 4)
-            {
-                throw new EncodingException();
-            }
+            var destination = cursor.Move(4);
 
-            destination[0] = first;
-            destination[1] = second;
-            destination[2] = third;
-            destination[3] = fourth;
-
-            destination = destination.Slice(4);
+            NetworkBitConverter.WriteUnaligned(destination.Span, (ulong)value, 4);
         }
 
-        public static PacketVersion CreateOne()
-        {
-            return new PacketVersion(0, 0, 0, 1);
-        }
+        public static PacketVersion One { get; } = new PacketVersion(0, 0, 0, 1);
+
+        public static PacketVersion Draft33 { get; } = new PacketVersion(byte.MaxValue, 0, 0, 33);
 
         public static PacketVersion CreateByDraft(byte draftNumber)
         {
@@ -92,7 +78,9 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public override string ToString()
         {
-            return string.Format("{0:X2}-{1:X2}-{2:X2}-{3:X2}", first, second, third, fourth);
+            var bytes = BitConverter.GetBytes(value);
+
+            return string.Format("{0:X2}-{1:X2}-{2:X2}-{3:X2}", bytes[0], bytes[1], bytes[2], bytes[3]);
         }
     }
 }

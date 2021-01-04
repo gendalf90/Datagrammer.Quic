@@ -1,16 +1,13 @@
-﻿using Datagrammer.Quic.Protocol.Error;
-using System;
-
-namespace Datagrammer.Quic.Protocol.Packet
+﻿namespace Datagrammer.Quic.Protocol.Packet
 {
     public readonly struct InitialPacket
     {
         private InitialPacket(PacketVersion version,
-                             PacketConnectionId destinationConnectionId,
-                             PacketConnectionId sourceConnectionId,
-                             PacketToken token,
-                             PacketNumber number,
-                             ReadOnlyMemory<byte> payload)
+                              PacketConnectionId destinationConnectionId,
+                              PacketConnectionId sourceConnectionId,
+                              PacketToken token,
+                              PacketNumber number,
+                              MemoryBuffer payload)
         {
             Version = version;
             DestinationConnectionId = destinationConnectionId;
@@ -30,74 +27,66 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public PacketNumber Number { get; }
 
-        public ReadOnlyMemory<byte> Payload { get; }
+        public MemoryBuffer Payload { get; }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out InitialPacket result, out ReadOnlyMemory<byte> remainings)
+        public static bool TryParse(MemoryCursor cursor, out InitialPacket result)
         {
             result = new InitialPacket();
-            remainings = bytes;
 
-            if(bytes.IsEmpty)
-            {
-                return false;
-            }
-
-            var firstByte = PacketFirstByte.Parse(bytes.Span[0]);
+            var firstByte = PacketFirstByte.Parse(cursor.Peek(1).Span[0]);
 
             if (!firstByte.IsInitialType())
             {
                 return false;
             }
 
-            var afterFirstByteBytes = bytes.Slice(1);
-            var version = PacketVersion.Parse(afterFirstByteBytes, out var afterVersionBytes);
-            var destinationConnectionId = PacketConnectionId.Parse(afterVersionBytes, out var afterDestinationConnectionIdBytes);
-            var sourceConnectionId = PacketConnectionId.Parse(afterDestinationConnectionIdBytes, out var afterSourceConnectionIdBytes);
-            var token = PacketToken.Parse(afterSourceConnectionIdBytes, out var afterTokenBytes);
-            var packetBytes = PacketPayload.SlicePacketBytes(afterTokenBytes, out var afterPacketBytes);
-            var packetNumberBytes = firstByte.SlicePacketNumberBytes(packetBytes, out var afterPacketNumberBytes);
-            var number = PacketNumber.Parse(packetNumberBytes);
+            cursor.Move(1);
 
-            remainings = afterPacketBytes;
-            result = new InitialPacket(version,
-                                       destinationConnectionId,
-                                       sourceConnectionId,
-                                       token,
-                                       number,
-                                       afterPacketNumberBytes);
+            var version = PacketVersion.Parse(cursor);
+            var destinationConnectionId = PacketConnectionId.Parse(cursor);
+            var sourceConnectionId = PacketConnectionId.Parse(cursor);
+            var token = PacketToken.Parse(cursor);
+            var packetBytes = PacketPayload.SlicePacketBytes(cursor);
+
+            using (packetBytes.SetCursor(cursor))
+            {
+                var packetNumberBytes = firstByte.SlicePacketNumberBytes(cursor);
+                var packetNumber = PacketNumber.Parse(packetNumberBytes);
+                var payload = cursor.SliceToEnd();
+
+                result = new InitialPacket(version,
+                                           destinationConnectionId,
+                                           sourceConnectionId,
+                                           token,
+                                           packetNumber,
+                                           payload);
+            }
 
             return true;
         }
 
-        public static PacketPayload.WritingContext StartWriting(ref Span<byte> destination,
-                                                                PacketVersion version,
-                                                                PacketConnectionId destinationConnectionId,
-                                                                PacketConnectionId sourceConnectionId,
-                                                                PacketNumber number,
-                                                                PacketToken token)
+        public static PacketPayload.CursorWritingContext StartWriting(MemoryCursor cursor,
+                                                                      PacketVersion version,
+                                                                      PacketConnectionId destinationConnectionId,
+                                                                      PacketConnectionId sourceConnectionId,
+                                                                      PacketNumber packetNumber,
+                                                                      PacketToken token)
         {
-            var start = destination;
+            ref byte firstByte = ref cursor.Move(1).Span[0];
 
-            if(start.IsEmpty)
-            {
-                throw new EncodingException();
-            }
+            version.WriteBytes(cursor);
+            destinationConnectionId.WriteBytes(cursor);
+            sourceConnectionId.WriteBytes(cursor);
+            token.WriteBytes(cursor);
 
-            destination = start.Slice(1);
+            var context = PacketPayload.StartPacketWriting(cursor);
+            var lengthOfPacketNumber = packetNumber.Write(cursor);
 
-            version.WriteBytes(ref destination);
-            destinationConnectionId.WriteBytes(ref destination);
-            sourceConnectionId.WriteBytes(ref destination);
-            token.WriteBytes(ref destination);
-
-            var context = PacketPayload.StartPacketWriting(ref destination);
-            var lengthOfNumber = number.Write(ref destination);
-
-            start[0] = new PacketFirstByte()
+            firstByte = new PacketFirstByte()
                 .SetInitial()
-                .SetPacketNumberLength(lengthOfNumber)
+                .SetPacketNumberLength(lengthOfPacketNumber)
                 .Build();
-            
+
             return context;
         }
     }

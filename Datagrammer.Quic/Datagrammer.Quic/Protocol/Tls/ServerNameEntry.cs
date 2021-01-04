@@ -24,7 +24,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             var type = cursor.Move(1).Span[0];
             var bytes = ByteVector.SliceVectorBytes(cursor, 0..ushort.MaxValue);
 
-            return new ServerNameEntry(type, bytes.Slice(cursor));
+            return new ServerNameEntry(type, bytes.AsMemory(cursor));
         }
 
         public static void WriteHostName(MemoryCursor cursor, string hostName)

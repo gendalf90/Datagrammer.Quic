@@ -54,7 +54,7 @@ namespace Datagrammer.Quic.Protocol
 
         public override bool Equals(object obj)
         {
-            return obj is ValueBuffer version && Equals(version);
+            return obj is ValueBuffer buffer && Equals(buffer);
         }
 
         public override int GetHashCode()

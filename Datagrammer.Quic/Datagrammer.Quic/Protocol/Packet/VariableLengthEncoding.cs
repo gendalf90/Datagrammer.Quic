@@ -82,10 +82,13 @@ namespace Datagrammer.Quic.Protocol.Packet
                 throw new EncodingException();
             }
 
-            var lengthToEncode = (ulong)NetworkBitConverter.GetBitLength((ulong)length) - 1;
-            var valueToEncode = value | lengthToEncode << (length * 8 - 2);
+            ref byte first = ref destination[0];
 
-            encodedLength = NetworkBitConverter.WriteUnaligned(destination, valueToEncode, length);
+            encodedLength = NetworkBitConverter.WriteUnaligned(destination, value, length);
+
+            var lengthToEncode = NetworkBitConverter.GetBitLength((ulong)length) - 1;
+
+            first |= (byte)(lengthToEncode << 6);
         }
     }
 }

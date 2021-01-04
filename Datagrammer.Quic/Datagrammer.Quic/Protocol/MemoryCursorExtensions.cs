@@ -33,7 +33,7 @@ namespace Datagrammer.Quic.Protocol
             bytes.Span.CopyTo(cursor);
         }
 
-        public static Memory<byte> Slice(this MemoryBuffer buffer, MemoryCursor cursor)
+        public static Memory<byte> AsMemory(this MemoryBuffer buffer, MemoryCursor cursor)
         {
             using (buffer.SetCursor(cursor))
             {
@@ -46,6 +46,22 @@ namespace Datagrammer.Quic.Protocol
             var bytes = cursor.Move(buffer.Length);
 
             buffer.CopyTo(bytes.Span);
+        }
+
+        public static ValueBuffer Slice(this MemoryCursor cursor, int length)
+        {
+            var bytes = cursor.Move(length);
+
+            return new ValueBuffer(bytes.Span);
+        }
+
+        public static MemoryBuffer SliceToEnd(this MemoryCursor cursor)
+        {
+            var startOffset = cursor.AsOffset();
+
+            cursor.MoveEnd();
+
+            return new MemoryBuffer(startOffset, cursor - startOffset);
         }
     }
 }

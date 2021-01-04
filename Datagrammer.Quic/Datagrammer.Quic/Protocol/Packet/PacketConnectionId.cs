@@ -7,13 +7,11 @@ namespace Datagrammer.Quic.Protocol.Packet
     {
         private const int MaxLength = 20;
 
-        private readonly ReadOnlyMemory<byte> rawBytes;
-        private readonly Guid guid;
+        private readonly ValueBuffer buffer;
 
-        private PacketConnectionId(ReadOnlyMemory<byte> rawBytes, Guid guid)
+        private PacketConnectionId(ValueBuffer buffer)
         {
-            this.rawBytes = rawBytes;
-            this.guid = guid;
+            this.buffer = buffer;
         }
 
         public override bool Equals(object obj)
@@ -23,30 +21,13 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public override int GetHashCode()
         {
-            if (IsGuid)
-            {
-                return guid.GetHashCode();
-            }
-
-            return HashCodeCalculator.Calculate(rawBytes.Span);
+            return buffer.GetHashCode();
         }
 
         public bool Equals(PacketConnectionId other)
         {
-            if (other.IsGuid != IsGuid)
-            {
-                return false;
-            }
-
-            if (other.IsGuid && IsGuid)
-            {
-                return other.guid == guid;
-            }
-
-            return rawBytes.Span.SequenceEqual(other.rawBytes.Span);
+            return buffer == other.buffer;
         }
-
-        private bool IsGuid => guid != Guid.Empty;
 
         public static bool operator ==(PacketConnectionId first, PacketConnectionId second)
         {
@@ -60,67 +41,49 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public static PacketConnectionId Empty { get; } = new PacketConnectionId();
 
-        public static PacketConnectionId Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static PacketConnectionId Parse(MemoryCursor cursor)
         {
-            if (bytes.IsEmpty)
-            {
-                throw new EncodingException();
-            }
-
-            var length = bytes.Span[0];
-
+            var length = cursor.Move(1).Span[0];
+            
             if (length > MaxLength)
             {
                 throw new EncodingException();
             }
 
-            var afterLengthBytes = bytes.Slice(1);
+            var buffer = cursor.Slice(length);
 
-            if (afterLengthBytes.Length < length)
-            {
-                throw new EncodingException();
-            }
+            return new PacketConnectionId(buffer);
+        }
 
-            var resultBytes = afterLengthBytes.Slice(0, length);
-            var resultGuid = length == 16 ? new Guid(resultBytes.Span) : Guid.Empty;
+        [Obsolete]
+        public static PacketConnectionId Parse(ReadOnlyMemory<byte> input, out ReadOnlyMemory<byte> output)
+        {
+            output = default;
 
-            remainings = afterLengthBytes.Slice(length);
-
-            return new PacketConnectionId(resultBytes, resultGuid);
+            return default;
         }
 
         public static PacketConnectionId Generate()
         {
-            return new PacketConnectionId(ReadOnlyMemory<byte>.Empty, Guid.NewGuid());
+            Span<byte> bytes = stackalloc byte[16];
+
+            Guid.NewGuid().TryWriteBytes(bytes);
+
+            return new PacketConnectionId(new ValueBuffer(bytes));
         }
 
-        public void WriteBytes(ref Span<byte> destination)
+        public void WriteBytes(MemoryCursor cursor)
         {
-            if(destination.IsEmpty)
-            {
-                throw new EncodingException();
-            }
+            var bytes = cursor.Move(buffer.Length + 1).Span;
 
-            var lengthOfValue = IsGuid ? 16 : rawBytes.Length;
-            var destinationOfValue = destination.Slice(1);
-            var isWritingSuccess = IsGuid 
-                ? guid.TryWriteBytes(destinationOfValue) 
-                : rawBytes.Span.TryCopyTo(destinationOfValue);
+            bytes[0] = (byte)buffer.Length;
 
-            if(!isWritingSuccess)
-            {
-                throw new EncodingException();
-            }
-
-            destination[0] = (byte)lengthOfValue;
-            destination = destinationOfValue.Slice(lengthOfValue);
+            buffer.CopyTo(bytes.Slice(1));
         }
 
         public override string ToString()
         {
-            var bytes = IsGuid ? guid.ToByteArray() : rawBytes.ToArray();
-
-            return BitConverter.ToString(bytes);
+            return buffer.ToString();
         }
     }
 }
