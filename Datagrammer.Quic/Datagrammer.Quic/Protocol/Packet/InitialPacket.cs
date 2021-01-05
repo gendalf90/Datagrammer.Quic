@@ -52,7 +52,7 @@
             {
                 var packetNumberBytes = firstByte.SlicePacketNumberBytes(cursor);
                 var packetNumber = PacketNumber.Parse(packetNumberBytes);
-                var payload = cursor.SliceToEnd();
+                var payload = cursor.SliceEnd();
 
                 result = new InitialPacket(version,
                                            destinationConnectionId,

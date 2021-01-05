@@ -17,5 +17,15 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
                 .CreatePadding()
                 .WriteBytes(ref bytes);
         }
+
+        public static bool TryParse(MemoryCursor cursor)
+        {
+            return FrameType.TrySlice(cursor, FrameType.Padding);
+        }
+
+        public static void WriteBytes(MemoryCursor cursor)
+        {
+            FrameType.Padding.WriteBytes(cursor);
+        }
     }
 }

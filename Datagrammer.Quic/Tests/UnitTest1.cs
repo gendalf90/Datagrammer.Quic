@@ -21,6 +21,8 @@ namespace Tests
         [Fact]
         public void Test1()
         {
+            Assert.True(true);
+
             //var snBuff = new byte[100];
             //var snIter = snBuff.AsSpan();
             //ServerNameExtension.WriteHostName(ref snIter, "example.ulfheim.net");

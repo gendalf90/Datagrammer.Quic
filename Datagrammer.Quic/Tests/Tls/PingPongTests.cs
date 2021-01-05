@@ -63,7 +63,7 @@ namespace Tests.Tls
             //Act
             var cursor = new MemoryCursor(buffer);
             var result = TlsRecord.TryParseEncrypted(cursor, aead, seq, out var record);
-            var decryptedResult = record.Payload.AsMemory(cursor);
+            var decryptedResult = record.Payload.Read(cursor);
 
             //Assert
             Assert.True(result);

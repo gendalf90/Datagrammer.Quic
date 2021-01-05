@@ -52,7 +52,7 @@ namespace Tests.Tls
             using (record.Payload.SetCursor(cursor))
             {
                 result &= Finished.TryParse(cursor, out var parsedVerifyDataBuffer);
-                parsedVerifyData = parsedVerifyDataBuffer.AsMemory(cursor);
+                parsedVerifyData = parsedVerifyDataBuffer.Read(cursor);
 
                 result &= cursor.IsEnd();
             }

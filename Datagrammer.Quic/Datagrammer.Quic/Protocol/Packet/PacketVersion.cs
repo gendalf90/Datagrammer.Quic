@@ -69,8 +69,6 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public static PacketVersion One { get; } = new PacketVersion(0, 0, 0, 1);
 
-        public static PacketVersion Draft33 { get; } = new PacketVersion(byte.MaxValue, 0, 0, 33);
-
         public static PacketVersion CreateByDraft(byte draftNumber)
         {
             return new PacketVersion(byte.MaxValue, 0, 0, draftNumber);

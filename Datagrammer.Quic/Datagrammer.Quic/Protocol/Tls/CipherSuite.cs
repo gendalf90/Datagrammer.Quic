@@ -30,7 +30,7 @@ namespace Datagrammer.Quic.Protocol.Tls
         {
             var buffer = ByteVector.SliceVectorBytes(cursor, 2..ushort.MaxValue);
 
-            return new CipherSuite(buffer.AsMemory(cursor));
+            return new CipherSuite(buffer.Read(cursor));
         }
 
         public override string ToString()

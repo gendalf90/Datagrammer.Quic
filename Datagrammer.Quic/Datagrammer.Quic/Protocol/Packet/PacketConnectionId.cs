@@ -50,9 +50,9 @@ namespace Datagrammer.Quic.Protocol.Packet
                 throw new EncodingException();
             }
 
-            var buffer = cursor.Slice(length);
+            var bytes = cursor.Move(length);
 
-            return new PacketConnectionId(buffer);
+            return new PacketConnectionId(new ValueBuffer(bytes.Span));
         }
 
         [Obsolete]
@@ -61,6 +61,20 @@ namespace Datagrammer.Quic.Protocol.Packet
             output = default;
 
             return default;
+        }
+
+        public static PacketConnectionId Parse(ReadOnlyMemory<byte> bytes)
+        {
+            var length = bytes.Span[0];
+
+            if (bytes.Length != length + 1 || length > MaxLength)
+            {
+                throw new EncodingException();
+            }
+
+            var value = bytes.Slice(1, length).Span;
+
+            return new PacketConnectionId(new ValueBuffer(value));
         }
 
         public static PacketConnectionId Generate()

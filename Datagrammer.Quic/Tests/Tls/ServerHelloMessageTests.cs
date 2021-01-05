@@ -90,7 +90,7 @@ namespace Tests.Tls
             Assert.Equal(SessionId.Parse(GetBytesOfSessionId()), message.SessionId);
             Assert.Equal(Cipher.TLS_AES_128_GCM_SHA256, message.Cipher);
             Assert.Equal(NamedGroup.X25519, keyShareEntry.Group);
-            Assert.True(GetBytesOfPublicKey().AsSpan().SequenceEqual(keyShareEntry.Key.AsMemory(cursor).Span));
+            Assert.True(GetBytesOfPublicKey().AsSpan().SequenceEqual(keyShareEntry.Key.Read(cursor).Span));
             Assert.Equal(ProtocolVersion.Tls13, supportedVersion);
         }
 

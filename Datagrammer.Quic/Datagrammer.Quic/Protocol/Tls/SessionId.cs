@@ -42,7 +42,7 @@ namespace Datagrammer.Quic.Protocol.Tls
         public static SessionId Parse(MemoryCursor cursor)
         {
             var buffer = ByteVector.SliceVectorBytes(cursor, 0..32);
-            var result = new ValueBuffer(buffer.AsMemory(cursor).Span);
+            var result = new ValueBuffer(buffer.Read(cursor).Span);
 
             return new SessionId(result);
         }

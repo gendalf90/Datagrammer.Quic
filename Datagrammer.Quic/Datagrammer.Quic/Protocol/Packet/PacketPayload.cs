@@ -23,11 +23,8 @@ namespace Datagrammer.Quic.Protocol.Packet
         public static MemoryBuffer SlicePacketBytes(MemoryCursor cursor)
         {
             var length = cursor.DecodeVariable32();
-            var startOffsetOfPayload = cursor.AsOffset();
 
-            cursor.Move(length);
-
-            return new MemoryBuffer(startOffsetOfPayload, length);
+            return cursor.Slice(length);
         }
 
         public static WritingContext StartPacketWriting(ref Span<byte> bytes)

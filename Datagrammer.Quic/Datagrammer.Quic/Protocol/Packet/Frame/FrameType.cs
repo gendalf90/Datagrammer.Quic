@@ -2,7 +2,7 @@
 
 namespace Datagrammer.Quic.Protocol.Packet.Frame
 {
-    public readonly struct FrameType
+    public readonly struct FrameType : IEquatable<FrameType>
     {
         private readonly ulong type;
 
@@ -85,8 +85,62 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             bytes = bytes.Slice(encodedLength);
         }
 
+        public void WriteBytes(MemoryCursor cursor)
+        {
+            cursor.EncodeVariable(type);
+        }
+
+        public static bool TrySlice(MemoryCursor cursor, FrameType frameType)
+        {
+            var bytes = cursor.PeekEnd();
+            var value = VariableLengthEncoding.Decode(bytes.Span, out var decodedLength);
+
+            if (value != frameType.type)
+            {
+                return false;
+            }
+
+            cursor.Move(decodedLength);
+
+            return true;
+        }
+
+        public static FrameType Parse(MemoryCursor cursor)
+        {
+            return new FrameType(cursor.DecodeVariable());
+        }
+
+        public static FrameType Crypto { get; } = new FrameType(6);
+
+        public static FrameType Padding { get; } = new FrameType(0);
+
         public static FrameType CreatePadding() => new FrameType(0);
 
         public static FrameType CreateCrypto() => new FrameType(6);
+
+        public bool Equals(FrameType other)
+        {
+            return type == other.type;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is FrameType type && Equals(type);
+        }
+
+        public override int GetHashCode()
+        {
+            return type.GetHashCode();
+        }
+
+        public static bool operator ==(FrameType first, FrameType second)
+        {
+            return first.Equals(second);
+        }
+
+        public static bool operator !=(FrameType first, FrameType second)
+        {
+            return !first.Equals(second);
+        }
     }
 }
