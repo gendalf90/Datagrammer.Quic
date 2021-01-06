@@ -15,12 +15,7 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             this.value = value;
         }
 
-        public TimeSpan GetDelayByDefault()
-        {
-            return GetDelayByExponent(DefaultExponent);
-        }
-
-        public TimeSpan GetDelayByExponent(int exponent)
+        public TimeSpan GetDelay(int exponent = DefaultExponent)
         {
             if(exponent < 0 || exponent > MaxExponent)
             {
@@ -34,13 +29,31 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             return TimeSpan.FromTicks(ticks);
         }
 
-        public static AckDelay Parse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static AckDelay CreateDelay(TimeSpan timeSpan, int exponent = DefaultExponent)
         {
-            var delay = VariableLengthEncoding.Decode64(bytes.Span, out var decodedLength);
+            if (exponent < 0 || exponent > MaxExponent)
+            {
+                throw new EncodingException();
+            }
 
-            remainings = bytes.Slice(decodedLength);
+            var exponentMultiplicator = (long)Math.Pow(2, exponent);
+            var ticks = timeSpan.Ticks;
+            var microseconds = ticks / 10;
+            var value = microseconds / exponentMultiplicator;
+
+            return new AckDelay(value);
+        }
+
+        public static AckDelay Parse(MemoryCursor cursor)
+        {
+            var delay = cursor.DecodeVariable64();
 
             return new AckDelay(delay);
+        }
+
+        public void Write(MemoryCursor cursor)
+        {
+            cursor.EncodeVariable64(value);
         }
     }
 }

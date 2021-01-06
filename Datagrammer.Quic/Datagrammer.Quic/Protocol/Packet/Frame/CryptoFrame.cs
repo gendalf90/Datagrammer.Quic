@@ -38,7 +38,7 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 
         public static PacketPayload.CursorWritingContext StartWriting(MemoryCursor cursor, int offset)
         {
-            FrameType.Crypto.WriteBytes(cursor);
+            FrameType.Crypto.Write(cursor);
 
             cursor.EncodeVariable32(offset);
 

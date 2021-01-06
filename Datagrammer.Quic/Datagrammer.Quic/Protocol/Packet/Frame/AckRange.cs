@@ -2,12 +2,12 @@
 {
     public readonly struct AckRange
     {
-        internal AckRange(bool isAck,
-                          bool isGap,
-                          ulong length)
+        public AckRange(bool isAck, bool isGap, int length)
         {
-            IsAck = isAck;
+            
+
             IsGap = isGap;
+            IsAck = isAck;
             Length = length;
         }
 
@@ -15,6 +15,6 @@
 
         public bool IsGap { get; }
 
-        public ulong Length { get; }
+        public int Length { get; }
     }
 }

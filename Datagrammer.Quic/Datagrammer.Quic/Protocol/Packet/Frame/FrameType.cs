@@ -11,13 +11,11 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             this.type = type;
         }
 
-        public bool IsPadding() => type == 0;
-
         public bool IsPing() => type == 1;
 
-        public bool IsAck() => type == 2 || type == 3;
+        public bool IsAck => type == 2 || type == 3;
 
-        public bool HasAckEcnFeedback() => type == 3;
+        public bool HasAckEcnFeedback => type == 3;
 
         public bool IsResetStream() => type == 4;
 
@@ -85,17 +83,17 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             bytes = bytes.Slice(encodedLength);
         }
 
-        public void WriteBytes(MemoryCursor cursor)
+        public void Write(MemoryCursor cursor)
         {
             cursor.EncodeVariable(type);
         }
 
-        public static bool TrySlice(MemoryCursor cursor, FrameType frameType)
+        public static bool TrySlice(MemoryCursor cursor, FrameType expected)
         {
             var bytes = cursor.PeekEnd();
-            var value = VariableLengthEncoding.Decode(bytes.Span, out var decodedLength);
+            var type = VariableLengthEncoding.Decode(bytes.Span, out var decodedLength);
 
-            if (value != frameType.type)
+            if (type != expected.type)
             {
                 return false;
             }
@@ -105,18 +103,26 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
             return true;
         }
 
-        public static FrameType Parse(MemoryCursor cursor)
+        public static FrameType Peek(MemoryCursor cursor)
         {
-            return new FrameType(cursor.DecodeVariable());
+            var bytes = cursor.PeekEnd();
+            var value = VariableLengthEncoding.Decode(bytes.Span, out _);
+
+            return new FrameType(value);
+        }
+
+        public void Slice(MemoryCursor cursor)
+        {
+            var length = VariableLengthEncoding.GetLength(type);
+
+            cursor.Move(length);
         }
 
         public static FrameType Crypto { get; } = new FrameType(6);
 
         public static FrameType Padding { get; } = new FrameType(0);
 
-        public static FrameType CreatePadding() => new FrameType(0);
-
-        public static FrameType CreateCrypto() => new FrameType(6);
+        public static FrameType CreateAck(bool withEcn = false) => new FrameType(withEcn ? 3 : 2);
 
         public bool Equals(FrameType other)
         {

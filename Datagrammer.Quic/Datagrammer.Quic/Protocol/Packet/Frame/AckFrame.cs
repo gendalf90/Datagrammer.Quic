@@ -1,70 +1,172 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Error;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet.Frame
 {
+    //можно не хранить списки подтвержденных номеров пакетов, а только один - последний с самым большим номером
+    //обрабатывать полученные параллельно и всегда слать gap'ы - они закроются из ответов параллельных обработчиков
     public readonly struct AckFrame
     {
-        private AckFrame(AckDelay delay, 
+        private AckFrame(AckDelay delay,
+                         PacketNumber largestAcknowledged,
                          AckRanges ranges,
-                         EcnCounts? ecnFeedback)
+                         AckEcnCounts? ecnFeedback)
         {
             Delay = delay;
+            LargestAcknowledged = largestAcknowledged;
             Ranges = ranges;
             EcnFeedback = ecnFeedback;
         }
 
         public AckDelay Delay { get; }
 
+        public PacketNumber LargestAcknowledged { get; }
+
         public AckRanges Ranges { get; }
 
-        public EcnCounts? EcnFeedback { get; }
+        public AckEcnCounts? EcnFeedback { get; }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out AckFrame result, out ReadOnlyMemory<byte> remainings)
+        public static bool TryParse(MemoryCursor cursor, out AckFrame result)
         {
             result = new AckFrame();
-            remainings = ReadOnlyMemory<byte>.Empty;
 
-            var type = FrameType.Parse(bytes, out var afterTypeRemainings);
+            var type = FrameType.Peek(cursor);
 
-            if(!type.IsAck())
+            if(!type.IsAck)
             {
                 return false;
             }
 
-            var largestAcknowledgedPacketNumber = PacketNumber.ParseVariable(afterTypeRemainings, out var afterLargestNumberBytes);
-            var delay = AckDelay.Parse(afterLargestNumberBytes, out var afterDelayBytes);
-            var rangesCount = VariableLengthEncoding.Decode32(afterDelayBytes.Span, out var rangesCountDecodedLength);
-            var afterRangesCountBytes = afterDelayBytes.Slice(rangesCountDecodedLength);
-            var rangesCountPlusFirstRange = rangesCount + 1;
-            var afterRangesBytes = SliceVariables(afterRangesCountBytes, rangesCountPlusFirstRange);
-            var rangesBytes = afterRangesCountBytes.Slice(0, afterRangesCountBytes.Length - afterRangesBytes.Length);
-            var resultRemainingBytes = afterRangesBytes;
-            var ecnFeedback = type.HasAckEcnFeedback() ? EcnCounts.Parse(afterRangesBytes, out resultRemainingBytes) : new EcnCounts?();
-            var ranges = new AckRanges(largestAcknowledgedPacketNumber, rangesBytes);
+            type.Slice(cursor);
 
-            result = new AckFrame(delay, ranges, ecnFeedback);
-            remainings = resultRemainingBytes;
+            var largestAcknowledged = PacketNumber.ParseVariable(cursor);
+            var delay = AckDelay.Parse(cursor);
+            var rangesCount = cursor.DecodeVariable32();
+            var ranges = SliceRanges(cursor, rangesCount + 1);
+            var ecnFeedback = type.HasAckEcnFeedback ? AckEcnCounts.Parse(cursor) : new AckEcnCounts?();
+
+            result = new AckFrame(delay, largestAcknowledged, ranges, ecnFeedback);
 
             return true;
         }
 
-        private static ReadOnlyMemory<byte> SliceVariables(ReadOnlyMemory<byte> bytes, int count)
+        private static AckRanges SliceRanges(MemoryCursor cursor, int count)
         {
-            var remainings = bytes;
+            var startOffset = cursor.AsOffset();
 
-            for(int i = 0; i < count; i++)
+            for (int i = 0; i < count; i++)
             {
-                SliceVariable(remainings, out remainings);
+                SliceRange(cursor);
             }
 
-            return remainings;
+            var bytes = cursor.Peek(startOffset - cursor);
+
+            return new AckRanges(bytes);
         }
 
-        private static void SliceVariable(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        private static void SliceRange(MemoryCursor cursor)
         {
-            VariableLengthEncoding.Decode(bytes.Span, out int decodedLength);
+            var bytes = cursor.PeekEnd();
+            var rangeBytes = VariableLengthEncoding.Slice(bytes.Span);
 
-            remainings = bytes.Slice(decodedLength);
+            cursor.Move(rangeBytes.Length);
+        }
+
+        public static WritingContext StartWriting(MemoryCursor cursor, 
+                                                  AckDelay delay, 
+                                                  PacketNumber largestAcknowledged,
+                                                  int beforLargestAcknowledgedLength,
+                                                  AckEcnCounts? ecnFeedback = null)
+        {
+            if (beforLargestAcknowledgedLength < 0)
+            {
+                throw new EncodingException();
+            }
+
+            FrameType
+                .CreateAck(ecnFeedback.HasValue)
+                .Write(cursor);
+
+            largestAcknowledged.Write(cursor);
+            delay.Write(cursor);
+
+            var startPayloadOffset = cursor.AsOffset();
+
+            cursor.EncodeVariable32(beforLargestAcknowledgedLength);
+
+            var startRangesOffset = cursor.AsOffset();
+
+            return new WritingContext(cursor, ecnFeedback, startPayloadOffset, startRangesOffset);
+        }
+
+        public readonly ref struct WritingContext
+        {
+            private readonly MemoryCursor cursor;
+            private readonly AckEcnCounts? ecnFeedback;
+            private readonly int startPayloadOffset;
+            private readonly int startRangesOffset;
+
+            public WritingContext(MemoryCursor cursor, 
+                                  AckEcnCounts? ecnFeedback,
+                                  int startPayloadOffset,
+                                  int startRangesOffset)
+            {
+                this.cursor = cursor;
+                this.ecnFeedback = ecnFeedback;
+                this.startPayloadOffset = startPayloadOffset;
+                this.startRangesOffset = startRangesOffset;
+            }
+
+            public WritingContext WriteGap(int length, int offset)
+            {
+                if (length < 1)
+                {
+                    throw new EncodingException();
+                }
+
+                if (offset < 0)
+                {
+                    throw new EncodingException();
+                }
+
+                cursor.EncodeVariable32(length - 1);
+                cursor.EncodeVariable32(offset);
+
+                return this;
+            }
+
+            public void Finish()
+            {
+                var currentOffset = cursor.AsOffset();
+                var rangesLength = currentOffset - startRangesOffset;
+                var rangesCount = 0;
+
+                using (cursor.WithLimit(-rangesLength))
+                {
+                    cursor.MoveStart();
+
+                    while (!cursor.IsEnd())
+                    {
+                        SliceRange(cursor);
+
+                        rangesCount++;
+                    }
+                }
+
+                var payloadLength = currentOffset - startPayloadOffset;
+                var payloadBytes = cursor.Move(-payloadLength);
+
+                Span<byte> payloadBuffer = stackalloc byte[payloadLength];
+
+                payloadBytes.Span.CopyTo(payloadBuffer);
+                cursor.EncodeVariable32(rangesCount);
+                payloadBuffer.CopyTo(cursor);
+
+                if (ecnFeedback.HasValue)
+                {
+                    ecnFeedback.Value.Write(cursor);
+                }
+            }
         }
     }
 }
