@@ -19,11 +19,18 @@ namespace Datagrammer.Quic.Protocol.Tls.Hashes
         private static readonly byte[] ServerApplicationTrafficLabel = Encoding.ASCII.GetBytes("tls13 s ap traffic");
         private static readonly byte[] KeyLabel = Encoding.ASCII.GetBytes("tls13 key");
         private static readonly byte[] IvLabel = Encoding.ASCII.GetBytes("tls13 iv");
+        private static readonly byte[] InitialSalt = { 175, 191, 236, 40, 153, 147, 210, 76, 158, 151, 134, 241, 156, 97, 17, 224, 67, 144, 168, 153 };
+        private static readonly byte[] ClientInitialLabel = Encoding.ASCII.GetBytes("tls13 client in");
+        private static readonly byte[] ServerInitialLabel = Encoding.ASCII.GetBytes("tls13 server in");
+        private static readonly byte[] QuicKeyLabel = Encoding.ASCII.GetBytes("tls13 quic key");
+        private static readonly byte[] QuicIvLabel = Encoding.ASCII.GetBytes("tls13 quic iv");
+        private static readonly byte[] QuicHeaderProtectionLabel = Encoding.ASCII.GetBytes("tls13 quic hp");
 
         private readonly HashAlgorithmName algorithmName;
 
         private readonly byte[] earlySecret;
         private readonly byte[] emptyHash;
+        private readonly byte[] zeroBuffer;
 
         private Hash(HashAlgorithmName algorithmName)
         {
@@ -31,6 +38,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Hashes
 
             earlySecret = ComputeEarlySecret();
             emptyHash = ComputeEmptyHash();
+            zeroBuffer = new byte[HashLength];
         }
 
         private byte[] ComputeEarlySecret()
@@ -144,7 +152,6 @@ namespace Datagrammer.Quic.Protocol.Tls.Hashes
         {
             Span<byte> resultBuffer = stackalloc byte[HashLength];
             Span<byte> secretBuffer = stackalloc byte[handshakeSecret.Length];
-            Span<byte> zeroBuffer = stackalloc byte[HashLength];
 
             handshakeSecret.CopyTo(secretBuffer);
 
@@ -180,6 +187,70 @@ namespace Datagrammer.Quic.Protocol.Tls.Hashes
             HkdfExpandLabel(secretBuffer, ServerApplicationTrafficLabel, hashBuffer, resultBuffer);
 
             return resultBuffer;
+        }
+
+        public (ValueBuffer MasterSecret, ValueBuffer TrafficSecret, ValueBuffer Key, ValueBuffer Iv) CreateClientApplicationSecrets(
+            ValueBuffer handshakeSecret, 
+            ValueBuffer handshakeHash)
+        {
+            return CreateApplicationSecrets(handshakeSecret, handshakeHash, ClientApplicationTrafficLabel);
+        }
+
+        public (ValueBuffer MasterSecret, ValueBuffer TrafficSecret, ValueBuffer Key, ValueBuffer Iv) CreateServerApplicationSecrets(
+            ValueBuffer handshakeSecret,
+            ValueBuffer handshakeHash)
+        {
+            return CreateApplicationSecrets(handshakeSecret, handshakeHash, ServerApplicationTrafficLabel);
+        }
+
+        private (ValueBuffer MasterSecret, ValueBuffer TrafficSecret, ValueBuffer Key, ValueBuffer Iv) CreateApplicationSecrets(
+            ValueBuffer handshakeSecret, 
+            ValueBuffer handshakeHash, 
+            ReadOnlySpan<byte> trafficLabel)
+        {
+            Span<byte> masterSecretBuffer = stackalloc byte[HashLength];
+            Span<byte> handshakeSecretBuffer = stackalloc byte[handshakeSecret.Length];
+            Span<byte> trafficSecretBuffer = stackalloc byte[HashLength];
+            Span<byte> handshakeHashBuffer = stackalloc byte[handshakeHash.Length];
+            Span<byte> keyBuffer = stackalloc byte[KeySize];
+            Span<byte> ivBuffer = stackalloc byte[IvSize];
+
+            handshakeSecret.CopyTo(handshakeSecretBuffer);
+            handshakeHash.CopyTo(handshakeHashBuffer);
+
+            HkdfExpandLabel(handshakeSecretBuffer, DerivedLabel, emptyHash, masterSecretBuffer); // master secret
+            HkdfExtract(masterSecretBuffer, zeroBuffer, masterSecretBuffer); // master secret
+            HkdfExpandLabel(masterSecretBuffer, trafficLabel, handshakeHashBuffer, trafficSecretBuffer); // traffic secret
+            HkdfExpandLabel(trafficSecretBuffer, KeyLabel, ReadOnlySpan<byte>.Empty, keyBuffer); // key
+            HkdfExpandLabel(trafficSecretBuffer, IvLabel, ReadOnlySpan<byte>.Empty, ivBuffer); // iv
+
+            return (new ValueBuffer(masterSecretBuffer), new ValueBuffer(trafficSecretBuffer), new ValueBuffer(keyBuffer), new ValueBuffer(ivBuffer));
+        }
+
+        public (ValueBuffer Key, ValueBuffer Iv, ValueBuffer Hp) CreateClientInitialSecrets(ReadOnlySpan<byte> cid)
+        {
+            return CreateInitialSecrets(cid, ClientInitialLabel);
+        }
+
+        public (ValueBuffer Key, ValueBuffer Iv, ValueBuffer Hp) CreateServerInitialSecrets(ReadOnlySpan<byte> cid)
+        {
+            return CreateInitialSecrets(cid, ServerInitialLabel);
+        }
+
+        private (ValueBuffer Key, ValueBuffer Iv, ValueBuffer Hp) CreateInitialSecrets(ReadOnlySpan<byte> cid, ReadOnlySpan<byte> initialLabel)
+        {
+            Span<byte> keyBuffer = stackalloc byte[KeySize];
+            Span<byte> hpBuffer = stackalloc byte[KeySize];
+            Span<byte> ivBuffer = stackalloc byte[IvSize];
+            Span<byte> initialSecretBuffer = stackalloc byte[HashLength];
+
+            HkdfExtract(InitialSalt, cid, initialSecretBuffer); // common_initial_secret
+            HkdfExpandLabel(initialSecretBuffer, initialLabel, ReadOnlySpan<byte>.Empty, initialSecretBuffer); // initial_secret
+            HkdfExpandLabel(initialSecretBuffer, QuicKeyLabel, ReadOnlySpan<byte>.Empty, keyBuffer); // key
+            HkdfExpandLabel(initialSecretBuffer, QuicIvLabel, ReadOnlySpan<byte>.Empty, ivBuffer); // iv
+            HkdfExpandLabel(initialSecretBuffer, QuicHeaderProtectionLabel, ReadOnlySpan<byte>.Empty, hpBuffer); // hp
+
+            return (new ValueBuffer(keyBuffer), new ValueBuffer(ivBuffer), new ValueBuffer(hpBuffer));
         }
 
         private void HkdfExpandLabel(ReadOnlySpan<byte> secret, ReadOnlySpan<byte> label, ReadOnlySpan<byte> context, Span<byte> output)

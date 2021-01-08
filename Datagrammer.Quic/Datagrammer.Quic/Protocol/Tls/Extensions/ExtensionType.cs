@@ -78,7 +78,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Extensions
 
         public static ExtensionType KeyShare { get; } = new ExtensionType(51); //0x33
 
-        public static ExtensionType TransportParameters { get; } = new ExtensionType(65445);
+        public static ExtensionType TransportParameters { get; } = new ExtensionType(65445); //0xffa5
 
         public bool Equals(ExtensionType other)
         {

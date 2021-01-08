@@ -81,5 +81,15 @@
         {
             return VectorPayloadExtension.StartWriting(cursor, ExtensionType.ServerName, 1..ushort.MaxValue);
         }
+
+        public static bool TryParseTransportParameters(this MemoryCursor cursor, out MemoryBuffer buffer)
+        {
+            return PayloadExtension.TryParse(cursor, ExtensionType.TransportParameters, out buffer);
+        }
+
+        public static ExtensionLength.CursorWritingContext StartTransportParametersWriting(this MemoryCursor cursor)
+        {
+            return PayloadExtension.StartWriting(cursor, ExtensionType.TransportParameters);
+        }
     }
 }

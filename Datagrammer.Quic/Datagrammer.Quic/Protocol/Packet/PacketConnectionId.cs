@@ -1,4 +1,5 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
+using Datagrammer.Quic.Protocol.Tls;
 using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
@@ -93,6 +94,24 @@ namespace Datagrammer.Quic.Protocol.Packet
             bytes[0] = (byte)buffer.Length;
 
             buffer.CopyTo(bytes.Slice(1));
+        }
+
+        public (ValueBuffer Key, ValueBuffer Iv, ValueBuffer Hp) CreateClientInitialSecrets(IHash hash)
+        {
+            Span<byte> bytes = stackalloc byte[buffer.Length];
+
+            buffer.CopyTo(bytes);
+
+            return hash.CreateClientInitialSecrets(bytes);
+        }
+
+        public (ValueBuffer Key, ValueBuffer Iv, ValueBuffer Hp) CreateServerInitialSecrets(IHash hash)
+        {
+            Span<byte> bytes = stackalloc byte[buffer.Length];
+
+            buffer.CopyTo(bytes);
+
+            return hash.CreateServerInitialSecrets(bytes);
         }
 
         public override string ToString()
