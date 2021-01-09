@@ -1,5 +1,4 @@
-﻿using Datagrammer.Quic.Protocol;
-using Datagrammer.Quic.Protocol.Tls;
+﻿using Datagrammer.Quic.Protocol.Tls;
 using Xunit;
 
 namespace Tests.Tls
@@ -52,6 +51,62 @@ namespace Tests.Tls
             var headerBytes = Utils.ParseHexString(header);
 
             using var aead = Cipher.TLS_AES_128_GCM_SHA256.CreateAead(ivBytes, keyBytes);
+
+            //Act
+            var token = aead.StartDecryption(messageBytes, buffer);
+
+            aead.Finish(token, headerBytes, seq);
+
+            //Assert
+            Assert.Equal(expected, Utils.ToHexString(token.Result.ToArray()), true);
+        }
+
+        [Theory]
+        [InlineData(
+            "e0459b3474bdd0e44a41c144",
+            "c6d98ff3441c3fe1b2182094f69caa2ed4b716b65488960a7a984979fb23e1c8",
+            654360564,
+            "4200bff4",
+            "01",
+            "655e5cd55c41f69080575d7999c25a5bfb")]
+        public void Encrypt_ChaCha20Poly1305_ResultBytesAreExpected(string iv, string key, int seq, string header, string message, string expected)
+        {
+            //Arrange
+            var buffer = new byte[TlsBuffer.MaxRecordSize];
+            var ivBytes = Utils.ParseHexString(iv);
+            var keyBytes = Utils.ParseHexString(key);
+            var messageBytes = Utils.ParseHexString(message);
+            var headerBytes = Utils.ParseHexString(header);
+
+            using var aead = Cipher.TLS_CHACHA20_POLY1305_SHA256.CreateAead(ivBytes, keyBytes);
+
+            //Act
+            var token = aead.StartEncryption(messageBytes, buffer);
+
+            aead.Finish(token, headerBytes, seq);
+
+            //Assert
+            Assert.Equal(expected, Utils.ToHexString(token.Result.ToArray()), true);
+        }
+
+        [Theory]
+        [InlineData(
+            "e0459b3474bdd0e44a41c144",
+            "c6d98ff3441c3fe1b2182094f69caa2ed4b716b65488960a7a984979fb23e1c8",
+            654360564,
+            "4200bff4",
+            "655e5cd55c41f69080575d7999c25a5bfb",
+            "01")]
+        public void Decrypt_ChaCha20Poly1305_ResultBytesAreExpected(string iv, string key, int seq, string header, string message, string expected)
+        {
+            //Arrange
+            var buffer = new byte[TlsBuffer.MaxRecordSize];
+            var ivBytes = Utils.ParseHexString(iv);
+            var keyBytes = Utils.ParseHexString(key);
+            var messageBytes = Utils.ParseHexString(message);
+            var headerBytes = Utils.ParseHexString(header);
+
+            using var aead = Cipher.TLS_CHACHA20_POLY1305_SHA256.CreateAead(ivBytes, keyBytes);
 
             //Act
             var token = aead.StartDecryption(messageBytes, buffer);
