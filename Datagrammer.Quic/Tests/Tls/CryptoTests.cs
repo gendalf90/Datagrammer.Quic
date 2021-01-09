@@ -26,13 +26,9 @@ namespace Tests.Tls
             using var aead = Cipher.TLS_AES_128_GCM_SHA256.CreateAead(ivBytes, keyBytes);
 
             //Act
-            var cursor = new MemoryCursor(buffer);
-            var token = aead.StartEncrypting(messageBytes, cursor);
+            var token = aead.StartEncryption(messageBytes, buffer);
 
-            token.SequenceNumber = seq;
-            token.AssociatedData = headerBytes;
-
-            aead.Finish(token);
+            aead.Finish(token, headerBytes, seq);
 
             //Assert
             Assert.Equal(expected, Utils.ToHexString(token.Result.ToArray()), true);
@@ -58,13 +54,9 @@ namespace Tests.Tls
             using var aead = Cipher.TLS_AES_128_GCM_SHA256.CreateAead(ivBytes, keyBytes);
 
             //Act
-            var cursor = new MemoryCursor(buffer);
-            var token = aead.StartDecrypting(messageBytes, cursor);
+            var token = aead.StartDecryption(messageBytes, buffer);
 
-            token.SequenceNumber = seq;
-            token.AssociatedData = headerBytes;
-
-            aead.Finish(token);
+            aead.Finish(token, headerBytes, seq);
 
             //Assert
             Assert.Equal(expected, Utils.ToHexString(token.Result.ToArray()), true);

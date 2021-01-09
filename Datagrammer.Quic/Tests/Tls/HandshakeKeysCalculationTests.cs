@@ -41,88 +41,9 @@ namespace Tests.Tls
         }
 
         [Theory]
-        [InlineData("df4a291baa1eb7cfa6934b29b474baad2697e29f1f920dcc77c8a0a088447624", "fb9fc80689b3a5d02c33243bf69a1b1b20705588a794304a6e7120155edf149a")]
-        public void CreateHandshakeSecret_TlsAes128GcmSha256_ResultIsExpected(string sharedSecret, string expectedResult)
-        {
-            //Arrange
-            var hash = Cipher.TLS_AES_128_GCM_SHA256.GetHash();
-            var sharedSecretBytes = Utils.ParseHexString(sharedSecret);
-
-            //Act
-            var result = hash.CreateHandshakeSecret(sharedSecretBytes).ToArray();
-
-            //Assert
-            Assert.Equal(expectedResult, Utils.ToHexString(result), true);
-        }
-
-        [Theory]
-        [InlineData("fb9fc80689b3a5d02c33243bf69a1b1b20705588a794304a6e7120155edf149a", "da75ce1139ac80dae4044da932350cf65c97ccc9e33f1e6f7d2d4b18b736ffd5", "ff0e5b965291c608c1e8cd267eefc0afcc5e98a2786373f0db47b04786d72aea")]
-        public void CreateClientHandshakeTrafficSecret_TlsAes128GcmSha256_ResultIsExpected(string handshakeSecret, string helloHash, string expectedResult)
-        {
-            //Arrange
-            var hash = Cipher.TLS_AES_128_GCM_SHA256.GetHash();
-            var handshakeSecretBytes = Utils.ParseHexString(handshakeSecret);
-            var helloHashBytes = Utils.ParseHexString(helloHash);
-
-            //Act
-            var result = hash.CreateClientHandshakeTrafficSecret(handshakeSecretBytes, helloHashBytes).ToArray();
-
-            //Assert
-            Assert.Equal(expectedResult, Utils.ToHexString(result), true);
-        }
-
-        [Theory]
-        [InlineData("fb9fc80689b3a5d02c33243bf69a1b1b20705588a794304a6e7120155edf149a", "da75ce1139ac80dae4044da932350cf65c97ccc9e33f1e6f7d2d4b18b736ffd5", "a2067265e7f0652a923d5d72ab0467c46132eeb968b6a32d311c805868548814")]
-        public void CreateServerHandshakeTrafficSecret_TlsAes128GcmSha256_ResultIsExpected(string handshakeSecret, string helloHash, string expectedResult)
-        {
-            //Arrange
-            var hash = Cipher.TLS_AES_128_GCM_SHA256.GetHash();
-            var handshakeSecretBytes = Utils.ParseHexString(handshakeSecret);
-            var helloHashBytes = Utils.ParseHexString(helloHash);
-
-            //Act
-            var result = hash.CreateServerHandshakeTrafficSecret(handshakeSecretBytes, helloHashBytes).ToArray();
-
-            //Assert
-            Assert.Equal(expectedResult, Utils.ToHexString(result), true);
-        }
-
-        [Theory]
-        [InlineData("ff0e5b965291c608c1e8cd267eefc0afcc5e98a2786373f0db47b04786d72aea", "7154f314e6be7dc008df2c832baa1d39")]
-        [InlineData("a2067265e7f0652a923d5d72ab0467c46132eeb968b6a32d311c805868548814", "844780a7acad9f980fa25c114e43402a")]
-        public void CreateHandshakeKey_TlsAes128GcmSha256_ResultIsExpected(string handshakeTrafficSecret, string expectedResult)
-        {
-            //Arrange
-            var hash = Cipher.TLS_AES_128_GCM_SHA256.GetHash();
-            var handshakeTrafficSecretBytes = Utils.ParseHexString(handshakeTrafficSecret);
-
-            //Act
-            var result = hash.CreateKey(handshakeTrafficSecretBytes).ToArray();
-
-            //Assert
-            Assert.Equal(expectedResult, Utils.ToHexString(result), true);
-        }
-
-        [Theory]
-        [InlineData("ff0e5b965291c608c1e8cd267eefc0afcc5e98a2786373f0db47b04786d72aea", "71abc2cae4c699d47c600268")]
-        [InlineData("a2067265e7f0652a923d5d72ab0467c46132eeb968b6a32d311c805868548814", "4c042ddc120a38d1417fc815")]
-        public void CreateHandshakeIv_TlsAes128GcmSha256_ResultIsExpected(string handshakeTrafficSecret, string expectedResult)
-        {
-            //Arrange
-            var hash = Cipher.TLS_AES_128_GCM_SHA256.GetHash();
-            var handshakeTrafficSecretBytes = Utils.ParseHexString(handshakeTrafficSecret);
-
-            //Act
-            var result = hash.CreateIv(handshakeTrafficSecretBytes).ToArray();
-
-            //Assert
-            Assert.Equal(expectedResult, Utils.ToHexString(result), true);
-        }
-
-        [Theory]
         [InlineData("a2067265e7f0652a923d5d72ab0467c46132eeb968b6a32d311c805868548814", "0cd9871cd7a164dce9fbc7f96c0f2978417dfc0c728a3f2096a7de210991a865", "ea6ee176dccc4af1859e9e4e93f797eac9a78ce439301e35275ad43f3cddbde3")]
         [InlineData("ff0e5b965291c608c1e8cd267eefc0afcc5e98a2786373f0db47b04786d72aea", "22844b930e5e0a59a09d5ac35fc032fc91163b193874a265236e568077378d8b", "976017a77ae47f1658e28f7085fe37d149d1e9c91f56e1aebbe0c6bb054bd92b")]
-        public void CalculateVerifyData_ResultIsExpected(string trafficSecret, string finishedHash, string expectedResult)
+        public void CalculateVerifyData_RsaPkcs1Sha256_ResultIsExpected(string trafficSecret, string finishedHash, string expectedResult)
         {
             //Arrange
             //Act
@@ -131,6 +52,68 @@ namespace Tests.Tls
 
             //Assert
             Assert.Equal(expectedResult, Utils.ToHexString(result.ToArray()), true);
+        }
+
+        [Theory]
+        [InlineData(
+            "df4a291baa1eb7cfa6934b29b474baad2697e29f1f920dcc77c8a0a088447624",
+            "da75ce1139ac80dae4044da932350cf65c97ccc9e33f1e6f7d2d4b18b736ffd5",
+            "fb9fc80689b3a5d02c33243bf69a1b1b20705588a794304a6e7120155edf149a",
+            "ff0e5b965291c608c1e8cd267eefc0afcc5e98a2786373f0db47b04786d72aea",
+            "7154f314e6be7dc008df2c832baa1d39",
+            "71abc2cae4c699d47c600268")]
+        public void CreateClientHandshakeSecrets_TlsAes128GcmSha256_ResultIsExpected(
+            string sharedSecret,
+            string helloHash,
+            string resultHandshake,
+            string resultTraffic,
+            string resultKey,
+            string resultIv)
+        {
+            //Arrange
+            var hash = Cipher.TLS_AES_128_GCM_SHA256.GetHash();
+            var sharedSecretBytes = Utils.ParseHexString(sharedSecret);
+            var helloHashBytes = Utils.ParseHexString(helloHash);
+
+            //Act
+            var result = hash.CreateClientHandshakeSecrets(sharedSecretBytes, helloHashBytes);
+
+            //Assert
+            Assert.Equal(resultHandshake, Utils.ToHexString(result.HandshakeSecret.ToArray()), true);
+            Assert.Equal(resultTraffic, Utils.ToHexString(result.TrafficSecret.ToArray()), true);
+            Assert.Equal(resultKey, Utils.ToHexString(result.Key.ToArray()), true);
+            Assert.Equal(resultIv, Utils.ToHexString(result.Iv.ToArray()), true);
+        }
+
+        [Theory]
+        [InlineData(
+            "df4a291baa1eb7cfa6934b29b474baad2697e29f1f920dcc77c8a0a088447624",
+            "da75ce1139ac80dae4044da932350cf65c97ccc9e33f1e6f7d2d4b18b736ffd5",
+            "fb9fc80689b3a5d02c33243bf69a1b1b20705588a794304a6e7120155edf149a",
+            "a2067265e7f0652a923d5d72ab0467c46132eeb968b6a32d311c805868548814",
+            "844780a7acad9f980fa25c114e43402a",
+            "4c042ddc120a38d1417fc815")]
+        public void CreateServerHandshakeSecrets_TlsAes128GcmSha256_ResultIsExpected(
+            string sharedSecret,
+            string helloHash,
+            string resultHandshake,
+            string resultTraffic,
+            string resultKey,
+            string resultIv)
+        {
+            //Arrange
+            var hash = Cipher.TLS_AES_128_GCM_SHA256.GetHash();
+            var sharedSecretBytes = Utils.ParseHexString(sharedSecret);
+            var helloHashBytes = Utils.ParseHexString(helloHash);
+
+            //Act
+            var result = hash.CreateServerHandshakeSecrets(sharedSecretBytes, helloHashBytes);
+
+            //Assert
+            Assert.Equal(resultHandshake, Utils.ToHexString(result.HandshakeSecret.ToArray()), true);
+            Assert.Equal(resultTraffic, Utils.ToHexString(result.TrafficSecret.ToArray()), true);
+            Assert.Equal(resultKey, Utils.ToHexString(result.Key.ToArray()), true);
+            Assert.Equal(resultIv, Utils.ToHexString(result.Iv.ToArray()), true);
         }
     }
 }

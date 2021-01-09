@@ -1,48 +1,45 @@
-﻿using System;
-using System.Security.Cryptography;
+﻿using AtlasRhythm.Cryptography.Aeads;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Tls.Aeads
 {
-    public sealed class AesGcmAead : Aead
+    public sealed class ChaCha20Poly1305Aead : Aead
     {
-        private const int TagLength = 16;
-        private const int NonceLength = 12;
-
         private readonly ReadOnlyMemory<byte> iv;
-        private readonly AesGcm algorithm;
+        private readonly Chacha20Poly1305 algorithm;
 
-        public AesGcmAead(ReadOnlyMemory<byte> iv, ReadOnlyMemory<byte> key)
+        public ChaCha20Poly1305Aead(ReadOnlyMemory<byte> iv, ReadOnlyMemory<byte> key)
         {
             this.iv = iv;
 
-            algorithm = new AesGcm(key.Span);
+            algorithm = new Chacha20Poly1305(key.ToArray());
         }
 
         protected override int GetTagLength()
         {
-            return TagLength;
+            return Chacha20Poly1305.TagSize;
         }
 
         protected override void Encrypt(CryptoToken token, ReadOnlySpan<byte> associatedData, int sequenceNumber)
         {
-            Span<byte> nonce = stackalloc byte[NonceLength];
+            Span<byte> nonce = stackalloc byte[Chacha20Poly1305.NonceSize];
 
             BuildNonce(iv, sequenceNumber, nonce);
 
             var destinationData = token.Result.Slice(0, token.Source.Length);
-            var destinationTag = token.Result.Slice(token.Source.Length, TagLength);
+            var destinationTag = token.Result.Slice(token.Source.Length, Chacha20Poly1305.TagSize);
 
             algorithm.Encrypt(nonce, token.Source, destinationData, destinationTag, associatedData);
         }
 
         protected override void Decrypt(CryptoToken token, ReadOnlySpan<byte> associatedData, int sequenceNumber)
         {
-            Span<byte> nonce = stackalloc byte[NonceLength];
+            Span<byte> nonce = stackalloc byte[Chacha20Poly1305.NonceSize];
 
             BuildNonce(iv, sequenceNumber, nonce);
 
-            var sourceTag = token.Source.Slice(token.Source.Length - TagLength);
-            var sourceData = token.Source.Slice(0, token.Source.Length - TagLength);
+            var sourceTag = token.Source.Slice(token.Source.Length - Chacha20Poly1305.TagSize);
+            var sourceData = token.Source.Slice(0, token.Source.Length - Chacha20Poly1305.TagSize);
 
             algorithm.Decrypt(nonce, sourceData, sourceTag, token.Result, associatedData);
         }

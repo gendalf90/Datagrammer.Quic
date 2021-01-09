@@ -96,7 +96,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             buffer.CopyTo(bytes.Slice(1));
         }
 
-        public (ValueBuffer Key, ValueBuffer Iv, ValueBuffer Hp) CreateClientInitialSecrets(IHash hash)
+        public (ValueBuffer Key, ValueBuffer Iv, ValueBuffer Hp) CreateClientInitialSecrets(ICipherHash hash)
         {
             Span<byte> bytes = stackalloc byte[buffer.Length];
 
@@ -105,7 +105,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             return hash.CreateClientInitialSecrets(bytes);
         }
 
-        public (ValueBuffer Key, ValueBuffer Iv, ValueBuffer Hp) CreateServerInitialSecrets(IHash hash)
+        public (ValueBuffer Key, ValueBuffer Iv, ValueBuffer Hp) CreateServerInitialSecrets(ICipherHash hash)
         {
             Span<byte> bytes = stackalloc byte[buffer.Length];
 

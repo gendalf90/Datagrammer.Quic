@@ -36,24 +36,18 @@ namespace Datagrammer.Quic.Protocol.Tls
                 throw new EncodingException();
             }
 
-            var encryptedBytes = cursor.Peek(length);
             var startOffsetOfBody = cursor.AsOffset();
+            var encryptedBytes = cursor.Move(length);
 
             Span<byte> encryptedBuffer = stackalloc byte[length];
 
             encryptedBytes.Span.CopyTo(encryptedBuffer);
 
-            var decryptionToken = aead.StartDecrypting(encryptedBuffer, cursor);
+            var cryptoToken = aead.StartDecryption(encryptedBuffer, encryptedBytes.Span);
 
-            decryptionToken.SequenceNumber = sequenceNumber;
-            decryptionToken.AssociatedData = headerBytes.Span;
+            aead.Finish(cryptoToken, headerBytes.Span, sequenceNumber);
 
-            aead.Finish(decryptionToken);
-
-            cursor.Set(startOffsetOfBody);
-            cursor.Move(length);
-
-            return new MemoryBuffer(startOffsetOfBody, decryptionToken.Result.Length);
+            return new MemoryBuffer(startOffsetOfBody, cryptoToken.Result.Length);
         }
 
         public static WritingContext StartWriting(MemoryCursor cursor)
@@ -153,8 +147,9 @@ namespace Datagrammer.Quic.Protocol.Tls
 
                 var headerLength = cursor - startLengthOfMessage;
                 var headerData = cursor.Peek(-headerLength);
-                var encryptingToken = aead.StartEncrypting(payloadBuffer, cursor);
-                var encryptedPayloadLength = encryptingToken.Result.Length;
+                var bytesToEncrypt = cursor.PeekEnd();
+                var cryptoToken = aead.StartEncryption(payloadBuffer, bytesToEncrypt.Span);
+                var encryptedPayloadLength = cryptoToken.Result.Length;
 
                 if (encryptedPayloadLength > MaxLength)
                 {
@@ -163,10 +158,9 @@ namespace Datagrammer.Quic.Protocol.Tls
 
                 NetworkBitConverter.WriteUnaligned(lengthBytes, (ulong)encryptedPayloadLength, 2);
 
-                encryptingToken.SequenceNumber = sequenceNumber;
-                encryptingToken.AssociatedData = headerData.Span;
+                aead.Finish(cryptoToken, headerData.Span, sequenceNumber);
 
-                aead.Finish(encryptingToken);
+                cursor.Move(encryptedPayloadLength);
             }
         }
     }

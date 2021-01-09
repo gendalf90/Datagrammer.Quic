@@ -11,9 +11,9 @@ namespace Datagrammer.Quic.Protocol.Tls
     {
         private static SignatureScheme[] supported = new[] { RSA_PKCS1_SHA256 };
 
-        private static Dictionary<ushort, IHash> hashes = new Dictionary<ushort, IHash>
+        private static Dictionary<ushort, ISignatureHash> hashes = new Dictionary<ushort, ISignatureHash>
         {
-            [0x0401] = Hash.Sha256
+            [0x0401] = new Hash(HashAlgorithmName.SHA256)
         };
 
         private static Dictionary<ushort, Func<ReadOnlyMemory<byte>, string, IPrivateCertificate>> privateCertificatePfxFactories = new Dictionary<ushort, Func<ReadOnlyMemory<byte>, string, IPrivateCertificate>>
@@ -88,7 +88,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static ReadOnlyMemory<SignatureScheme> Supported => supported;
 
-        public IHash GetHash()
+        public ISignatureHash GetHash()
         {
             if (hashes.TryGetValue(code, out var hash))
             {

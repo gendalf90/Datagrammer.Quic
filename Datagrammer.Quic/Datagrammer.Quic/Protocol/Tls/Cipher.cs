@@ -3,21 +3,34 @@ using Datagrammer.Quic.Protocol.Tls.Aeads;
 using Datagrammer.Quic.Protocol.Tls.Hashes;
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 
 namespace Datagrammer.Quic.Protocol.Tls
 {
+    //      | Algorithm          | Reference | Key Size | Nonce Size | Tag Size | Max. Plaintext Size |
+    //      | ------------------ | --------- | -------- | ---------- | -------- | ------------------- |
+    //      | ChaCha20-Poly1305  | RFC 8439  | 32       | 12         | 16       | 2^38-64             |
+    //      | AES-128-CCM        | RFC 5116  | 16       | 12         | 16       | 2^24-1              |
+    //      | AES-256-CCM        | RFC 5116  | 32       | 12         | 16       | 2^24-1              |
+    //      | AES-128-GCM        | RFC 5116  | 16       | 12         | 16       | 2^36-31             |
+    //      | AES-256-GCM        | RFC 5116  | 32       | 12         | 16       | 2^36-31             |
+    //      | AES-128-OCB        | RFC 7253  | 16       | 1..15      | 8,12,16  | unbounded           |
+    //      | AES-192-OCB        | RFC 7253  | 24       | 1..15      | 8,12,16  | unbounded           |
+    //      | AES-256-OCB        | RFC 7253  | 32       | 1..15      | 8,12,16  | unbounded           |
     public readonly struct Cipher : IEquatable<Cipher>
     {
-        private static Cipher[] supported = new Cipher[] { TLS_AES_128_GCM_SHA256 };
+        private static Cipher[] supported = new Cipher[] { TLS_AES_128_GCM_SHA256, TLS_CHACHA20_POLY1305_SHA256 };
 
-        private static Dictionary<ushort, IHash> hashes = new Dictionary<ushort, IHash>
+        private static Dictionary<ushort, ICipherHash> hashes = new Dictionary<ushort, ICipherHash>
         {
-            [0x1301] = Hash.Sha256
+            [0x1301] = new Hash(HashAlgorithmName.SHA256, 16, 12),
+            [0x1303] = new Hash(HashAlgorithmName.SHA256, 32, 12)
         };
 
         private static Dictionary<ushort, Func<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>, IAead>> aeadFactories = new Dictionary<ushort, Func<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>, IAead>>
         {
-            [0x1301] = (iv, key) => new AesGcmAead(iv, key)
+            [0x1301] = (iv, key) => new AesGcmAead(iv, key),
+            [0x1303] = (iv, key) => new ChaCha20Poly1305Aead(iv, key)
         };
 
         private readonly ushort code;
@@ -72,7 +85,7 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         public static ReadOnlyMemory<Cipher> Supported => supported;
 
-        public IHash GetHash()
+        public ICipherHash GetHash()
         {
             if(hashes.TryGetValue(code, out var hash))
             {
