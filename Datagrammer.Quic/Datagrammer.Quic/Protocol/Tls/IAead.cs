@@ -8,6 +8,6 @@ namespace Datagrammer.Quic.Protocol.Tls
 
         CryptoToken StartDecryption(ReadOnlySpan<byte> data, Span<byte> destination);
 
-        void Finish(CryptoToken token, ReadOnlySpan<byte> associatedData, int sequenceNumber);
+        void Finish(CryptoToken token);
     }
 }

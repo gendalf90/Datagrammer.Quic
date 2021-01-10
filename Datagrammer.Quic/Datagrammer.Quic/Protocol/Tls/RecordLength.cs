@@ -24,7 +24,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             return new MemoryBuffer(startOffsetOfBody, length);
         }
 
-        public static MemoryBuffer DecryptBytes(MemoryCursor cursor, int startOffsetOfMessage, IAead aead, int sequenceNumber)
+        public static MemoryBuffer DecryptBytes(MemoryCursor cursor, int startOffsetOfMessage, IAead aead, ulong sequenceNumber)
         {
             var headerLength = cursor - startOffsetOfMessage + 2;
             var lengthBytes = cursor.Move(2);
@@ -45,7 +45,10 @@ namespace Datagrammer.Quic.Protocol.Tls
 
             var cryptoToken = aead.StartDecryption(encryptedBuffer, encryptedBytes.Span);
 
-            aead.Finish(cryptoToken, headerBytes.Span, sequenceNumber);
+            cryptoToken.UseSequenceNumber(sequenceNumber);
+            cryptoToken.UseAssociatedData(headerBytes.Span);
+
+            aead.Finish(cryptoToken);
 
             return new MemoryBuffer(startOffsetOfBody, cryptoToken.Result.Length);
         }
@@ -63,7 +66,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             int startLengthOfMessage, 
             RecordType type,
             IAead aead, 
-            int sequenceNumber)
+            ulong sequenceNumber)
         {
             var lengthBytes = cursor.Move(2);
             var startLengthOfBody = cursor.AsOffset();
@@ -108,7 +111,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             private readonly Span<byte> lengthBytes;
             private readonly RecordType type;
             private readonly IAead aead;
-            private readonly int sequenceNumber;
+            private readonly ulong sequenceNumber;
 
             public EncryptedWritingContext(
                 MemoryCursor cursor,
@@ -117,7 +120,7 @@ namespace Datagrammer.Quic.Protocol.Tls
                 int startLengthOfMessage,
                 RecordType type,
                 IAead aead,
-                int sequenceNumber)
+                ulong sequenceNumber)
             {
                 this.cursor = cursor;
                 this.lengthBytes = lengthBytes;
@@ -158,7 +161,10 @@ namespace Datagrammer.Quic.Protocol.Tls
 
                 NetworkBitConverter.WriteUnaligned(lengthBytes, (ulong)encryptedPayloadLength, 2);
 
-                aead.Finish(cryptoToken, headerData.Span, sequenceNumber);
+                cryptoToken.UseSequenceNumber(sequenceNumber);
+                cryptoToken.UseAssociatedData(headerData.Span);
+
+                aead.Finish(cryptoToken);
 
                 cursor.Move(encryptedPayloadLength);
             }

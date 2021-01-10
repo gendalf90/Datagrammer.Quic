@@ -16,29 +16,31 @@
         {
             result = new TransportParameter();
 
-            if (!TransportParameterType.TrySlice(cursor, type))
-            {
-                return false;
-            }
+            //if (!TransportParameterType.TrySlice(cursor, type))
+            //{
+            //    return false;
+            //}
 
-            var data = PacketPayload.SlicePacketBytes(cursor);
+            //var data = PacketPayload.SlicePacketBytes(cursor);
 
-            result = new TransportParameter(type, data);
+            //result = new TransportParameter(type, data);
 
             return true;
         }
 
         public static PacketPayload.CursorWritingContext StartWriting(MemoryCursor cursor, TransportParameterType type)
         {
-            type.Write(cursor);
+            //type.Write(cursor);
 
-            return PacketPayload.StartPacketWriting(cursor);
+            //return PacketPayload.StartPacketWriting(cursor);
+
+            return default;
         }
 
         public static void Slice(MemoryCursor cursor)
         {
-            TransportParameterType.Parse(cursor);
-            PacketPayload.SlicePacketBytes(cursor);
+            //TransportParameterType.Parse(cursor);
+            //PacketPayload.SlicePacketBytes(cursor);
         }
     }
 }

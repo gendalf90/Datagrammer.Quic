@@ -33,6 +33,7 @@
         {
             result = new InitialPacket();
 
+            var startOffset = cursor.AsOffset();
             var firstByte = PacketFirstByte.Parse(cursor.Peek(1).Span[0]);
 
             if (!firstByte.IsInitialType())
@@ -46,7 +47,7 @@
             var destinationConnectionId = PacketConnectionId.Parse(cursor);
             var sourceConnectionId = PacketConnectionId.Parse(cursor);
             var token = PacketToken.Parse(cursor);
-            var packetBytes = PacketPayload.SlicePacketBytes(cursor);
+            var packetBytes = PacketPayload.SlicePacketBytes(cursor, startOffset);
 
             using (packetBytes.SetCursor(cursor))
             {
@@ -72,6 +73,8 @@
                                                                       PacketNumber packetNumber,
                                                                       PacketToken token)
         {
+            var startOffset = cursor.AsOffset();
+
             ref byte firstByte = ref cursor.Move(1).Span[0];
 
             version.WriteBytes(cursor);
@@ -79,7 +82,7 @@
             sourceConnectionId.WriteBytes(cursor);
             token.WriteBytes(cursor);
 
-            var context = PacketPayload.StartPacketWriting(cursor);
+            var context = PacketPayload.StartPacketWriting(cursor, startOffset);
             var lengthOfPacketNumber = packetNumber.Write(cursor);
 
             firstByte = new PacketFirstByte()

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Tls;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
@@ -86,6 +87,11 @@ namespace Datagrammer.Quic.Protocol.Packet
             }
 
             return new PacketNumber(candidate);
+        }
+
+        public void AsSequenceNumber(ref CryptoToken token)
+        {
+            token.UseSequenceNumber(value);
         }
 
         public PacketNumber GetNext()

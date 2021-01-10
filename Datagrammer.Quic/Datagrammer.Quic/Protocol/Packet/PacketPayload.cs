@@ -20,11 +20,13 @@ namespace Datagrammer.Quic.Protocol.Packet
             return afterLengthBytes.Slice(0, length);
         }
 
-        public static MemoryBuffer SlicePacketBytes(MemoryCursor cursor)
+        public static MemoryBuffer SlicePacketBytes(MemoryCursor cursor, int startPacketOffset)
         {
-            var length = cursor.DecodeVariable32();
+            var readLength = cursor - startPacketOffset;
+            var packetLength = cursor.DecodeVariable32();
+            var payloadLength = packetLength - readLength;
 
-            return cursor.Slice(length);
+            return cursor.Slice(payloadLength);
         }
 
         public static WritingContext StartPacketWriting(ref Span<byte> bytes)
@@ -41,9 +43,9 @@ namespace Datagrammer.Quic.Protocol.Packet
             return context;
         }
 
-        public static CursorWritingContext StartPacketWriting(MemoryCursor cursor)
+        public static CursorWritingContext StartPacketWriting(MemoryCursor cursor, int startPacketOffset)
         {
-            return new CursorWritingContext(cursor, cursor.AsOffset());
+            return new CursorWritingContext(cursor, startPacketOffset, cursor.AsOffset());
         }
 
         public readonly ref struct WritingContext
@@ -80,23 +82,29 @@ namespace Datagrammer.Quic.Protocol.Packet
         public readonly ref struct CursorWritingContext
         {
             private readonly MemoryCursor cursor;
-            private readonly int startOffset;
+            private readonly int startPacketOffset;
+            private readonly int toWriteLengthOffset;
 
-            public CursorWritingContext(MemoryCursor cursor, int startOffset)
+            public CursorWritingContext(
+                MemoryCursor cursor, 
+                int startPacketOffset,
+                int toWriteLengthOffset)
             {
                 this.cursor = cursor;
-                this.startOffset = startOffset;
+                this.startPacketOffset = startPacketOffset;
+                this.toWriteLengthOffset = toWriteLengthOffset;
             }
 
             public void Dispose()
             {
-                var payloadLength = cursor - startOffset;
+                var packetLength = cursor - startPacketOffset;
+                var payloadLength = cursor - toWriteLengthOffset;
                 var payload = cursor.Move(-payloadLength);
 
                 Span<byte> payloadBuffer = stackalloc byte[payloadLength];
 
                 payload.Span.CopyTo(payloadBuffer);
-                cursor.EncodeVariable32(payloadLength);
+                cursor.EncodeVariable32(packetLength);
                 payloadBuffer.CopyTo(cursor);
             }
         }

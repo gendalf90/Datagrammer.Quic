@@ -34,7 +34,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             return true;
         }
 
-        public static bool TryParseEncrypted(MemoryCursor cursor, IAead aead, int sequenceNumber, out Record result)
+        public static bool TryParseEncrypted(MemoryCursor cursor, IAead aead, ulong sequenceNumber, out Record result)
         {
             var startOffsetOfMessage = cursor.AsOffset();
 
@@ -75,7 +75,7 @@ namespace Datagrammer.Quic.Protocol.Tls
             return RecordLength.StartWriting(cursor);
         }
 
-        public static RecordLength.EncryptedWritingContext StartEncryptedWriting(MemoryCursor cursor, RecordType type, IAead aead, int sequenceNumber)
+        public static RecordLength.EncryptedWritingContext StartEncryptedWriting(MemoryCursor cursor, RecordType type, IAead aead, ulong sequenceNumber)
         {
             var startLengthOfMessage = cursor.AsOffset();
 

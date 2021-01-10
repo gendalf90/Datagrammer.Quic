@@ -23,26 +23,26 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
         {
             result = new CryptoFrame();
 
-            if(!FrameType.TrySlice(cursor, FrameType.Crypto))
+            if (!FrameType.TrySlice(cursor, FrameType.Crypto))
             {
                 return false;
             }
 
             var offset = cursor.DecodeVariable32();
-            var data = PacketPayload.SlicePacketBytes(cursor);
+            var data = VariableLengthPayload.SliceBytes(cursor);
 
             result = new CryptoFrame(offset, data);
 
             return true;
         }
 
-        public static PacketPayload.CursorWritingContext StartWriting(MemoryCursor cursor, int offset)
+        public static VariableLengthPayload.CursorWritingContext StartWriting(MemoryCursor cursor, int offset)
         {
             FrameType.Crypto.Write(cursor);
 
             cursor.EncodeVariable32(offset);
 
-            return PacketPayload.StartPacketWriting(cursor);
+            return VariableLengthPayload.StartWriting(cursor);
         }
     }
 }

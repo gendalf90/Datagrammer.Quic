@@ -21,7 +21,7 @@ namespace Tests.Tls
             "1b13dd9f8d8f17091d34b349",
             1,
             "706f6e67")]
-        public void WriteEncryptedApplicationData_TLS_AES_128_GCM_SHA256_ResultIsExpected(string encryptedData, string key, string iv, int seq, string decryptedPayload)
+        public void WriteEncryptedApplicationData_TLS_AES_128_GCM_SHA256_ResultIsExpected(string encryptedData, string key, string iv, ulong seq, string decryptedPayload)
         {
             //Arrange
             var buffer = new byte[TlsBuffer.MaxRecordSize];
@@ -53,7 +53,7 @@ namespace Tests.Tls
             "1b13dd9f8d8f17091d34b349",
             1,
             "706f6e67")]
-        public void ReadEncryptedApplicationData_TLS_AES_128_GCM_SHA256_ResultIsExpected(string encryptedData, string key, string iv, int seq, string decryptedPayload)
+        public void ReadEncryptedApplicationData_TLS_AES_128_GCM_SHA256_ResultIsExpected(string encryptedData, string key, string iv, ulong seq, string decryptedPayload)
         {
             //Arrange
             var buffer = Utils.ParseHexString(encryptedData);

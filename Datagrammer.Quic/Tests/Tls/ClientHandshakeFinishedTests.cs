@@ -76,7 +76,7 @@ namespace Tests.Tls
             return "976017a77ae47f1658e28f7085fe37d149d1e9c91f56e1aebbe0c6bb054bd92b";
         }
 
-        private (string Iv, string Key, int SeqNum) GetEncryptionData()
+        private (string Iv, string Key, ulong SeqNum) GetEncryptionData()
         {
             return ("71abc2cae4c699d47c600268", "7154f314e6be7dc008df2c832baa1d39", 0);
         }

@@ -7,7 +7,7 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
     {
         protected abstract int GetTagLength();
 
-        protected void BuildNonce(ReadOnlyMemory<byte> iv, long sequenceNumber, Span<byte> result)
+        protected void BuildNonce(ReadOnlyMemory<byte> iv, ulong sequenceNumber, Span<byte> result)
         {
             if (!iv.Span.TryCopyTo(result))
             {
@@ -52,18 +52,18 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
             return new CryptoToken(false, data, destination.Slice(0, resultLength));
         }
 
-        public void Finish(CryptoToken token, ReadOnlySpan<byte> associatedData, int sequenceNumber)
+        public void Finish(CryptoToken token)
         {
             try
             {
                 if (token.IsEncrypt)
                 {
-                    Encrypt(token, associatedData, sequenceNumber);
+                    Encrypt(token);
                 }
 
                 if (token.IsDecrypt)
                 {
-                    Decrypt(token, associatedData, sequenceNumber);
+                    Decrypt(token);
                 }
             }
             catch (Exception e)
@@ -72,9 +72,9 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
             }
         }
 
-        protected abstract void Encrypt(CryptoToken token, ReadOnlySpan<byte> associatedData, int sequenceNumber);
+        protected abstract void Encrypt(CryptoToken token);
 
-        protected abstract void Decrypt(CryptoToken token, ReadOnlySpan<byte> associatedData, int sequenceNumber);
+        protected abstract void Decrypt(CryptoToken token);
 
         public abstract void Dispose();
     }

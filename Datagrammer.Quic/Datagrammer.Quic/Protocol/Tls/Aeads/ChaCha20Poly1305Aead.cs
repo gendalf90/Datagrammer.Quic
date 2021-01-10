@@ -20,28 +20,28 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
             return Chacha20Poly1305.TagSize;
         }
 
-        protected override void Encrypt(CryptoToken token, ReadOnlySpan<byte> associatedData, int sequenceNumber)
+        protected override void Encrypt(CryptoToken token)
         {
             Span<byte> nonce = stackalloc byte[Chacha20Poly1305.NonceSize];
 
-            BuildNonce(iv, sequenceNumber, nonce);
+            BuildNonce(iv, token.SequenceNumber, nonce);
 
             var destinationData = token.Result.Slice(0, token.Source.Length);
             var destinationTag = token.Result.Slice(token.Source.Length, Chacha20Poly1305.TagSize);
 
-            algorithm.Encrypt(nonce, token.Source, destinationData, destinationTag, associatedData);
+            algorithm.Encrypt(nonce, token.Source, destinationData, destinationTag, token.AssociatedData);
         }
 
-        protected override void Decrypt(CryptoToken token, ReadOnlySpan<byte> associatedData, int sequenceNumber)
+        protected override void Decrypt(CryptoToken token)
         {
             Span<byte> nonce = stackalloc byte[Chacha20Poly1305.NonceSize];
 
-            BuildNonce(iv, sequenceNumber, nonce);
+            BuildNonce(iv, token.SequenceNumber, nonce);
 
             var sourceTag = token.Source.Slice(token.Source.Length - Chacha20Poly1305.TagSize);
             var sourceData = token.Source.Slice(0, token.Source.Length - Chacha20Poly1305.TagSize);
 
-            algorithm.Decrypt(nonce, sourceData, sourceTag, token.Result, associatedData);
+            algorithm.Decrypt(nonce, sourceData, sourceTag, token.Result, token.AssociatedData);
         }
 
         public override void Dispose()
