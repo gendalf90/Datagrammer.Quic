@@ -1,9 +1,11 @@
 ﻿using Datagrammer.Quic.Protocol.Tls;
+using Datagrammer.Quic.Protocol.Tls.Ciphers;
+using System;
 using Xunit;
 
 namespace Tests.Tls
 {
-    public class CryptoTests
+    public class CryptoTests : IDisposable
     {
         [Theory]
         [InlineData(
@@ -127,6 +129,53 @@ namespace Tests.Tls
 
             //Assert
             Assert.Equal(expected, Utils.ToHexString(token.Result.ToArray()), true);
+        }
+
+        [Theory]
+        [InlineData("9ddd12c994c0698b89374a9c077a3077", "fb66bc6a93032b50dd8973972d149421", "1e9cdb9909")]
+        public void CreateMask_TlsAes128GcmSha256_ResultBytesAreExpected(string key, string sample, string expected)
+        {
+            //Arrange
+            var bufferIntrinsic = new byte[TlsBuffer.MaxRecordSize];
+            var buffer = new byte[TlsBuffer.MaxRecordSize];
+            var keyBytes = Utils.ParseHexString(key);
+            var sampleBytes = Utils.ParseHexString(sample);
+
+            Environment.SetEnvironmentVariable(Debug.NoAesVar, null);
+            using var cipherIntrinsic = Cipher.TLS_AES_128_GCM_SHA256.CreateCipher(keyBytes);
+            Environment.SetEnvironmentVariable(Debug.NoAesVar, "X");
+            using var cipher = Cipher.TLS_AES_128_GCM_SHA256.CreateCipher(keyBytes);
+
+            //Act
+            Array.Resize(ref bufferIntrinsic, cipher.CreateMask(sampleBytes, bufferIntrinsic));
+            Array.Resize(ref buffer, cipher.CreateMask(sampleBytes, buffer));
+
+            //Assert
+            Assert.Equal(expected, Utils.ToHexString(bufferIntrinsic), true);
+            Assert.Equal(expected, Utils.ToHexString(buffer), true);
+        }
+
+        [Theory]
+        [InlineData("25a282b9e82f06f21f488917a4fc8f1b73573685608597d0efcb076b0ab7a7a4", "5e5cd55c41f69080575d7999c25a5bfb", "aefefe7d03")]
+        public void CreateMask_TlsChaCha20Poly1305Sha256_ResultBytesAreExpected(string key, string sample, string expected)
+        {
+            //Arrange
+            var buffer = new byte[TlsBuffer.MaxRecordSize];
+            var keyBytes = Utils.ParseHexString(key);
+            var sampleBytes = Utils.ParseHexString(sample);
+
+            using var cipher = Cipher.TLS_CHACHA20_POLY1305_SHA256.CreateCipher(keyBytes);
+
+            //Act
+            Array.Resize(ref buffer, cipher.CreateMask(sampleBytes, buffer));
+
+            //Assert
+            Assert.Equal(expected, Utils.ToHexString(buffer), true);
+        }
+
+        public void Dispose()
+        {
+            Environment.SetEnvironmentVariable(Debug.NoAesVar, null);
         }
     }
 }

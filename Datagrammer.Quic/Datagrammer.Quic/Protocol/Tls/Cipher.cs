@@ -1,5 +1,6 @@
 ﻿using Datagrammer.Quic.Protocol.Error;
 using Datagrammer.Quic.Protocol.Tls.Aeads;
+using Datagrammer.Quic.Protocol.Tls.Ciphers;
 using Datagrammer.Quic.Protocol.Tls.Hashes;
 using System;
 using System.Collections.Generic;
@@ -25,6 +26,12 @@ namespace Datagrammer.Quic.Protocol.Tls
         {
             [0x1301] = new Hash(HashAlgorithmName.SHA256, 16, 12),
             [0x1303] = new Hash(HashAlgorithmName.SHA256, 32, 12)
+        };
+
+        private static Dictionary<ushort, Func<ReadOnlyMemory<byte>, ICipher>> cipherFactories = new Dictionary<ushort, Func<ReadOnlyMemory<byte>, ICipher>>
+        {
+            [0x1301] = (key) => AesEcbIntrinsicsCipher.IsSupported ? new AesEcbIntrinsicsCipher(key) : new Aes128EcbCipher(key),
+            [0x1303] = (key) => new ChaCha20Cipher(key)
         };
 
         private static Dictionary<ushort, Func<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>, IAead>> aeadFactories = new Dictionary<ushort, Func<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>, IAead>>
@@ -100,6 +107,16 @@ namespace Datagrammer.Quic.Protocol.Tls
             if(aeadFactories.TryGetValue(code, out var factory))
             {
                 return factory(iv, key);
+            }
+
+            throw new NotSupportedException();
+        }
+
+        public ICipher CreateCipher(ReadOnlyMemory<byte> key)
+        {
+            if (cipherFactories.TryGetValue(code, out var factory))
+            {
+                return factory(key);
             }
 
             throw new NotSupportedException();
