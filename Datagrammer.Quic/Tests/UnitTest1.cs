@@ -1,26 +1,145 @@
 using Datagrammer;
+using Datagrammer.Quic.Protocol;
 using Datagrammer.Quic.Protocol.Packet;
 using Datagrammer.Quic.Protocol.Packet.Frame;
 using Datagrammer.Quic.Protocol.Tls;
 using Datagrammer.Quic.Protocol.Tls.Extensions;
-using Org.BouncyCastle.Math.EC.Rfc7748;
-using Org.BouncyCastle.Security;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 using Xunit;
+using System.Runtime.Intrinsics.X86;
+using System.Runtime.Intrinsics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using Datagrammer.Quic.Protocol.Tls.Ciphers;
+using AtlasRhythm.Cryptography.Aeads;
 
 namespace Tests
 {
     public class UnitTest1
     {
-        [Fact]
+        //[Fact]
         public void Test1()
         {
+            var buff = new byte[PacketBuffer.MaxPacketSize];
+            var pBuff = Utils.ParseHexString("060040f1010000ed0303ebf8fa56f12939b9584a3896472ec40bb863cfd3e86804fe3a47f06a2b69484c00000413011302010000c000000010000e00000b6578616d706c652e636f6dff01000100000a00080006001d0017001800100007000504616c706e000500050100000000003300260024001d00209370b2c9caa47fbabaf4559fedba753de171fa71f50f1ce15d43e994ec74d748002b0003020304000d0010000e0403050306030203080408050806002d00020101001c00024001ffa500320408ffffffffffffffff05048000ffff07048000ffff0801100104800075300901100f088394c8f03e51570806048000ffff");
+            var hBuff = Utils.ParseHexString("c3ff000020088394c8f03e5157080000449e00000002");
+
+            Array.Resize(ref pBuff, 1162);
+            Array.Copy(hBuff, buff, hBuff.Length);
+            Array.Copy(pBuff, 0, buff, hBuff.Length, pBuff.Length);
+            Array.Resize(ref buff, hBuff.Length + pBuff.Length);
+
+            var encryptedBuff = new byte[PacketBuffer.MaxPacketSize];
+            var aead = Cipher.TLS_AES_128_GCM_SHA256.CreateAead(Utils.ParseHexString("6b26114b9cba2b63a9e8dd4f"), Utils.ParseHexString("175257a31eb09dea9366d8bb79ad80ba"));
+            //var token = aead.StartEncryption(pBuff, encryptedBuff);
+            //token.UseSequenceNumber(2);
+            //token.UseAssociatedData(hBuff);
+            //aead.Finish(token);
+            //var encryptedHex = Utils.ToHexString(token.Result.ToArray());
+
+            var c = new MemoryCursor(buff);
+            var res1 = InitialPacket.TryParse(c, out var p);
+            using (p.Payload.SetCursor(c))
+            {
+                var res2 = CryptoFrame.TryParse(c, out var f);
+            }
+            var res3 = c.IsEnd();
+
+            var buffer = new byte[PacketBuffer.MaxPacketSize];
+            var cursor = new MemoryCursor(buffer);
+
+            using (InitialPacket.StartWriting(
+                cursor,
+                PacketVersion.CreateByDraft(29),
+                PacketConnectionId.Generate(),
+                PacketConnectionId.Generate(),
+                PacketNumber.Initial, 
+                PacketToken.Empty))
+            {
+                using (CryptoFrame.StartWriting(cursor, 0))
+                {
+                    using (ClientHello.StartWriting(cursor, HandshakeRandom.Generate(), Cipher.Supported, SessionId.Generate()))
+                    {
+                        using (cursor.StartSupportedGroupsWriting())
+                        {
+                            foreach(var group in NamedGroup.Supported.Span)
+                            {
+                                group.WriteBytes(cursor);
+                            }
+                        }
+
+                        using (cursor.StartSignatureAlgorithmsWriting())
+                        {
+                            foreach(var scheme in SignatureScheme.Supported.Span)
+                            {
+                                scheme.WriteBytes(cursor);
+                            }
+                        }
+
+                        using (cursor.StartKeySharesWriting())
+                        {
+                            using (KeyShareEntry.StartWriting(cursor, NamedGroup.X25519))
+                            {
+                                Utils.ParseHexString("358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254").CopyTo(cursor);
+                            }
+                        }
+
+                        using (cursor.StartPskKeyExchangeModesWriting())
+                        {
+                            PskKeyExchangeMode.PskDheKe.WriteBytes(cursor);
+                        }
+
+                        using (cursor.StartSupportedVersionsWriting())
+                        {
+                            ProtocolVersion.Tls13.WriteBytes(cursor);
+                        }
+
+                        cursor.StartTransportParametersWriting().Dispose();
+                    }
+
+                    for (int i = 0; i < 1000; i++)
+                    {
+                        PaddingFrame.WriteBytes(cursor);
+                    }
+                }
+            }
+
+            var t = Utils.ParseHexString("c0ff00001d08d0076f25b832934b0841f39c4f6381d72e0044ba00060041060100010203036e3828a258f4a7488d105acd6da670a41b28c2b601c58c4530486df585ec54a6000006130213011303010000d30033004700450017004104e46de65fb3e4fa258e1f03c551fa6a4507411e09bdc32e4dc597084db1852caf9d5b783243ebc748bf644ca31e108f4fdea2c19ae3c94ad99714dfa38a6a244500000021001f00001c68747470332d746573742e6c6974657370656564746563682e636f6d0010000800060568332d3239002b0003020304000d000a00080804040304010201000a000600040017001dffa5002d050480004000070480004000040480008000080101090103010267100e0104030245c00f0841f39c4f6381d72e002d000302000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+
+            var client = new UdpClient(0);
+            var endPoint = new IPEndPoint(IPAddress.Parse("52.55.120.73"), 443);
+
+            client.Send(t, t.Length, endPoint);
+
+            IPEndPoint ep = null;
+            var response = client.Receive(ref ep);
+
+            var h1 = Utils.ToHexString(response);
+
+            cursor = new MemoryCursor(response);
+
+            var result = InitialPacket.TryParse(cursor, out var packet);
+
+            using (packet.Payload.SetCursor(cursor))
+            {
+                var h2 = Utils.ToHexString(cursor.PeekEnd().ToArray());
+
+                CryptoFrame.TryParse(cursor, out var cryptoFrame);
+
+                using (cryptoFrame.Data.SetCursor(cursor))
+                {
+                    ServerHello.TryParse(cursor, out var sh);
+                }
+            }
+
             Assert.True(true);
 
             //var snBuff = new byte[100];
@@ -182,6 +301,116 @@ namespace Tests
             }
 
             return result.ToString();
+        }
+    }
+
+    public class AesIntrinsicsContext
+    {
+        private Vector128<byte>[] roundKeys;
+
+        public AesIntrinsicsContext(ReadOnlySpan<byte> key)
+        {
+            Span<byte> buffer = stackalloc byte[key.Length];
+
+            key.CopyTo(buffer);
+
+            roundKeys = KeyExpansion(buffer);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        public void EncryptEcb(Span<byte> data)
+        {
+            Vector128<byte>[] keys = roundKeys;
+            Span<Vector128<byte>> blocks = MemoryMarshal.Cast<byte, Vector128<byte>>(data);
+
+            for (int i = 0; i < blocks.Length; i++)
+            {
+                Vector128<byte> b = blocks[i];
+
+                b = Sse2.Xor(b, keys[0]);
+                b = Aes.Encrypt(b, keys[1]);
+                b = Aes.Encrypt(b, keys[2]);
+                b = Aes.Encrypt(b, keys[3]);
+                b = Aes.Encrypt(b, keys[4]);
+                b = Aes.Encrypt(b, keys[5]);
+                b = Aes.Encrypt(b, keys[6]);
+                b = Aes.Encrypt(b, keys[7]);
+                b = Aes.Encrypt(b, keys[8]);
+                b = Aes.Encrypt(b, keys[9]);
+                b = Aes.EncryptLast(b, keys[10]);
+
+                blocks[i] = b;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        public void DecryptEcb(Span<byte> data)
+        {
+            Vector128<byte>[] keys = roundKeys;
+            Span<Vector128<byte>> blocks = MemoryMarshal.Cast<byte, Vector128<byte>>(data);
+
+            for (int i = 0; i < blocks.Length; i++)
+            {
+                Vector128<byte> b = blocks[i];
+
+                b = Sse2.Xor(b, keys[10]);
+                b = Aes.Decrypt(b, keys[19]);
+                b = Aes.Decrypt(b, keys[18]);
+                b = Aes.Decrypt(b, keys[17]);
+                b = Aes.Decrypt(b, keys[16]);
+                b = Aes.Decrypt(b, keys[15]);
+                b = Aes.Decrypt(b, keys[14]);
+                b = Aes.Decrypt(b, keys[13]);
+                b = Aes.Decrypt(b, keys[12]);
+                b = Aes.Decrypt(b, keys[11]);
+                b = Aes.DecryptLast(b, keys[0]);
+
+                blocks[i] = b;
+            }
+        }
+
+        private static Vector128<byte>[] KeyExpansion(Span<byte> key)
+        {
+            var keys = new Vector128<byte>[20];
+
+            keys[0] = Unsafe.ReadUnaligned<Vector128<byte>>(ref key[0]);
+
+            MakeRoundKey(keys, 1, 0x01);
+            MakeRoundKey(keys, 2, 0x02);
+            MakeRoundKey(keys, 3, 0x04);
+            MakeRoundKey(keys, 4, 0x08);
+            MakeRoundKey(keys, 5, 0x10);
+            MakeRoundKey(keys, 6, 0x20);
+            MakeRoundKey(keys, 7, 0x40);
+            MakeRoundKey(keys, 8, 0x80);
+            MakeRoundKey(keys, 9, 0x1b);
+            MakeRoundKey(keys, 10, 0x36);
+
+            for (int i = 1; i < 10; i++)
+            {
+                keys[10 + i] = Aes.InverseMixColumns(keys[i]);
+            }
+
+            return keys;
+        }
+
+        private static void MakeRoundKey(Vector128<byte>[] keys, int i, byte rcon)
+        {
+            Vector128<byte> s = keys[i - 1];
+            Vector128<byte> t = keys[i - 1];
+
+            t = Aes.KeygenAssist(t, rcon);
+            t = Sse2.Shuffle(t.AsUInt32(), 0xFF).AsByte();
+
+            s = Sse2.Xor(s, Sse2.ShiftLeftLogical128BitLane(s, 4));
+            s = Sse2.Xor(s, Sse2.ShiftLeftLogical128BitLane(s, 8));
+
+            keys[i] = Sse2.Xor(s, t);
+        }
+
+        public static bool IsSupported()
+        {
+            return Aes.IsSupported;
         }
     }
 }
