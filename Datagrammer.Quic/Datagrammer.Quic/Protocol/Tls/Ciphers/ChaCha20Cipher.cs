@@ -24,16 +24,11 @@ namespace Datagrammer.Quic.Protocol.Tls.Ciphers
 			this.key = key;
         }
 
-		public int CreateMask(ReadOnlySpan<byte> sample, Span<byte> destination)
+		public ValueBuffer CreateMask(ReadOnlySpan<byte> sample)
 		{
 			if (sample.Length != SampleLength)
             {
 				throw new ArgumentOutOfRangeException(nameof(sample));
-            }
-
-			if (destination.Length < MaskLength)
-            {
-				throw new ArgumentOutOfRangeException(nameof(destination));
             }
 
 			var counter = BitConverter.ToUInt32(sample.Slice(0, CounterLength));
@@ -44,13 +39,11 @@ namespace Datagrammer.Quic.Protocol.Tls.Ciphers
 			KeySetup(key.Span, state);
 			IvSetup(nonce, counter, state);
 
-			var maskBytes = destination.Slice(0, MaskLength);
-
-			maskBytes.Clear();
+			Span<byte> maskBytes = stackalloc byte[MaskLength];
 
 			ProcessBytes(state, maskBytes);
 
-			return maskBytes.Length;
+			return new ValueBuffer(maskBytes);
 		}
 
         public void Dispose()

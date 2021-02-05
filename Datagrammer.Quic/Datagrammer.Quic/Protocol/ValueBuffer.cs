@@ -1,13 +1,13 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Datagrammer.Quic.Protocol
 {
+    //rename to FixedBuffer
     public readonly struct ValueBuffer : IEquatable<ValueBuffer>
     {
-        private readonly long part1;
-        private readonly long part2;
-        private readonly long part3;
-        private readonly long part4;
+        private readonly LayoutBuffer data;
         private readonly int length;
 
         public ValueBuffer(ReadOnlySpan<byte> bytes)
@@ -23,32 +23,40 @@ namespace Datagrammer.Quic.Protocol
 
             bytes.CopyTo(buffer);
 
-            part1 = BitConverter.ToInt64(buffer.Slice(0, 8));
-            part2 = BitConverter.ToInt64(buffer.Slice(8, 8));
-            part3 = BitConverter.ToInt64(buffer.Slice(16, 8));
-            part4 = BitConverter.ToInt64(buffer.Slice(24, 8));
+            data = Unsafe.ReadUnaligned<LayoutBuffer>(ref MemoryMarshal.GetReference(buffer));
         }
 
         public void CopyTo(Span<byte> bytes)
         {
             Span<byte> buffer = stackalloc byte[MaxLength];
 
-            BitConverter.TryWriteBytes(buffer.Slice(0, 8), part1);
-            BitConverter.TryWriteBytes(buffer.Slice(8, 8), part2);
-            BitConverter.TryWriteBytes(buffer.Slice(16, 8), part3);
-            BitConverter.TryWriteBytes(buffer.Slice(24, 8), part4);
+            Unsafe.WriteUnaligned(ref MemoryMarshal.GetReference(buffer), data);
 
             buffer.Slice(0, length).CopyTo(bytes);
+        }
+
+        public byte this[int index]
+        {
+            get
+            {
+                if (index < 0 || index >= length)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                }
+
+                return Unsafe.Add(ref Unsafe.As<LayoutBuffer, byte>(ref Unsafe.AsRef(in data)), index);
+            }
         }
 
         public int Length => length;
 
         public bool Equals(ValueBuffer other)
         {
-            return part1 == other.part1 &&
-                part2 == other.part2 &&
-                part3 == other.part3 &&
-                part4 == other.part4 &&
+            return 
+                data.part_1 == other.data.part_1 &&
+                data.part_2 == other.data.part_2 &&
+                data.part_3 == other.data.part_3 &&
+                data.part_4 == other.data.part_4 &&
                 length == other.length;
         }
 
@@ -59,10 +67,11 @@ namespace Datagrammer.Quic.Protocol
 
         public override int GetHashCode()
         {
-            return part1.GetHashCode() ^
-                part2.GetHashCode() ^
-                part3.GetHashCode() ^
-                part4.GetHashCode() ^
+            return 
+                data.part_1.GetHashCode() ^
+                data.part_2.GetHashCode() ^
+                data.part_3.GetHashCode() ^
+                data.part_4.GetHashCode() ^
                 length.GetHashCode();
         }
 
@@ -102,6 +111,22 @@ namespace Datagrammer.Quic.Protocol
         public override string ToString()
         {
             return BitConverter.ToString(ToArray());
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        private struct LayoutBuffer
+        {
+            [FieldOffset(0)]
+            public long part_1;
+
+            [FieldOffset(8)]
+            public long part_2;
+
+            [FieldOffset(16)]
+            public long part_3;
+
+            [FieldOffset(24)]
+            public long part_4;
         }
     }
 }

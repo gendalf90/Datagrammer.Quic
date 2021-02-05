@@ -27,14 +27,9 @@ namespace Datagrammer.Quic.Protocol.Tls.Ciphers
             roundKeys = KeyExpansion(buffer);
         }
 
-        public int CreateMask(ReadOnlySpan<byte> sample, Span<byte> destination)
+        public ValueBuffer CreateMask(ReadOnlySpan<byte> sample)
         {
             if (sample.Length < MaskLength)
-            {
-                throw new ArgumentOutOfRangeException(nameof(sample));
-            }
-
-            if (destination.Length < MaskLength)
             {
                 throw new ArgumentOutOfRangeException(nameof(sample));
             }
@@ -45,9 +40,9 @@ namespace Datagrammer.Quic.Protocol.Tls.Ciphers
 
             Encrypt(buffer);
 
-            buffer.Slice(0, MaskLength).CopyTo(destination);
+            var mask = buffer.Slice(0, MaskLength);
 
-            return MaskLength;
+            return new ValueBuffer(mask);
         }
 
         private void Encrypt(Span<byte> data)

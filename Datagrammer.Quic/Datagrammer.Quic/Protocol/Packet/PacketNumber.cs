@@ -1,5 +1,4 @@
-﻿using Datagrammer.Quic.Protocol.Tls;
-using System;
+﻿using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
@@ -45,14 +44,25 @@ namespace Datagrammer.Quic.Protocol.Packet
             return writtenLength;
         }
 
-        public int Write(MemoryCursor cursor)
+        public int Write(MemoryCursor cursor, int? minLength = null)
         {
-            var bytes = cursor.PeekEnd();
-            var length = NetworkBitConverter.WriteUnaligned(bytes.Span, value);
+            var length = NetworkBitConverter.GetByteLength(value);
 
-            cursor.Move(length);
+            if (minLength.HasValue)
+            {
+                length = Math.Max(minLength.Value, length);
+            }
+
+            var bytes = cursor.Move(length);
+            
+            NetworkBitConverter.WriteUnaligned(bytes.Span, value, length);
 
             return length;
+        }
+
+        public void Fill(Span<byte> bytes)
+        {
+            NetworkBitConverter.WriteUnaligned(bytes, value, bytes.Length);
         }
 
         public void WriteVariable(Span<byte> destination, out Span<byte> remainings)
@@ -89,9 +99,9 @@ namespace Datagrammer.Quic.Protocol.Packet
             return new PacketNumber(candidate);
         }
 
-        public void AsSequenceNumber(ref CryptoToken token)
+        public ulong AsSequenceNumber()
         {
-            token.UseSequenceNumber(value);
+            return value;
         }
 
         public PacketNumber GetNext()

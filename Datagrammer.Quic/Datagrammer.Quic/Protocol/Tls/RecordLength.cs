@@ -36,21 +36,19 @@ namespace Datagrammer.Quic.Protocol.Tls
                 throw new EncodingException();
             }
 
+            if (length < aead.TagLength)
+            {
+                throw new EncodingException();
+            }
+
             var startOffsetOfBody = cursor.AsOffset();
-            var encryptedBytes = cursor.Move(length);
+            var encryptedLength = length - aead.TagLength;
+            var encryptedBytes = cursor.Move(encryptedLength);
+            var tag = cursor.Move(aead.TagLength);
 
-            Span<byte> encryptedBuffer = stackalloc byte[length];
+            aead.Decrypt(encryptedBytes.Span, tag.Span, sequenceNumber, headerBytes.Span);
 
-            encryptedBytes.Span.CopyTo(encryptedBuffer);
-
-            var cryptoToken = aead.StartDecryption(encryptedBuffer, encryptedBytes.Span);
-
-            cryptoToken.UseSequenceNumber(sequenceNumber);
-            cryptoToken.UseAssociatedData(headerBytes.Span);
-
-            aead.Finish(cryptoToken);
-
-            return new MemoryBuffer(startOffsetOfBody, cryptoToken.Result.Length);
+            return new MemoryBuffer(startOffsetOfBody, encryptedLength);
         }
 
         public static WritingContext StartWriting(MemoryCursor cursor)
@@ -142,31 +140,23 @@ namespace Datagrammer.Quic.Protocol.Tls
                     throw new EncodingException();
                 }
 
-                Span<byte> payloadBuffer = stackalloc byte[payloadLength];
-
                 var payloadData = cursor.Move(-payloadLength);
-
-                payloadData.Span.CopyTo(payloadBuffer);
-
                 var headerLength = cursor - startLengthOfMessage;
                 var headerData = cursor.Peek(-headerLength);
-                var bytesToEncrypt = cursor.PeekEnd();
-                var cryptoToken = aead.StartEncryption(payloadBuffer, bytesToEncrypt.Span);
-                var encryptedPayloadLength = cryptoToken.Result.Length;
+                var encryptedPayloadLength = payloadLength + aead.TagLength;
 
                 if (encryptedPayloadLength > MaxLength)
                 {
                     throw new EncodingException();
                 }
 
+                cursor.Move(encryptedPayloadLength);
+
+                var tag = cursor.Peek(-aead.TagLength);
+
                 NetworkBitConverter.WriteUnaligned(lengthBytes, (ulong)encryptedPayloadLength, 2);
 
-                cryptoToken.UseSequenceNumber(sequenceNumber);
-                cryptoToken.UseAssociatedData(headerData.Span);
-
-                aead.Finish(cryptoToken);
-
-                cursor.Move(encryptedPayloadLength);
+                aead.Encrypt(payloadData.Span, tag.Span, sequenceNumber, headerData.Span);
             }
         }
     }

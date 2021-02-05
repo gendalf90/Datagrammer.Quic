@@ -24,14 +24,9 @@ namespace Datagrammer.Quic.Protocol.Tls.Ciphers
             decryptor = aesAlgorithm.CreateDecryptor();
         }
 
-        public int CreateMask(ReadOnlySpan<byte> sample, Span<byte> destination)
+        public ValueBuffer CreateMask(ReadOnlySpan<byte> sample)
         {
             if (sample.Length < MaskLength)
-            {
-                throw new ArgumentOutOfRangeException(nameof(sample));
-            }
-
-            if (destination.Length < MaskLength)
             {
                 throw new ArgumentOutOfRangeException(nameof(sample));
             }
@@ -42,12 +37,9 @@ namespace Datagrammer.Quic.Protocol.Tls.Ciphers
 
             encryptor.TransformBlock(buffer, 0, buffer.Length, buffer, 0);
 
-            buffer
-                .AsSpan()
-                .Slice(0, MaskLength)
-                .CopyTo(destination);
+            var mask = buffer.AsSpan().Slice(0, MaskLength);
 
-            return MaskLength;
+            return new ValueBuffer(mask);
         }
 
         public void Dispose()

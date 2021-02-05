@@ -5,9 +5,6 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
 {
     public sealed class AesGcmAead : Aead
     {
-        private const int TagLength = 16;
-        private const int NonceLength = 12;
-
         private readonly ReadOnlyMemory<byte> iv;
         private readonly AesGcm algorithm;
 
@@ -18,33 +15,24 @@ namespace Datagrammer.Quic.Protocol.Tls.Aeads
             algorithm = new AesGcm(key.Span);
         }
 
-        protected override int GetTagLength()
+        public override int TagLength => 16;
+
+        public override void Encrypt(Span<byte> data, Span<byte> tag, ulong sequenceNumber, ReadOnlySpan<byte> associatedData)
         {
-            return TagLength;
+            Span<byte> nonce = stackalloc byte[12];
+
+            BuildNonce(iv, sequenceNumber, nonce);
+
+            algorithm.Encrypt(nonce, data, data, tag, associatedData);
         }
 
-        protected override void Encrypt(CryptoToken token)
+        public override void Decrypt(Span<byte> data, ReadOnlySpan<byte> tag, ulong sequenceNumber, ReadOnlySpan<byte> associatedData)
         {
-            Span<byte> nonce = stackalloc byte[NonceLength];
+            Span<byte> nonce = stackalloc byte[12];
 
-            BuildNonce(iv, token.SequenceNumber, nonce);
+            BuildNonce(iv, sequenceNumber, nonce);
 
-            var destinationData = token.Result.Slice(0, token.Source.Length);
-            var destinationTag = token.Result.Slice(token.Source.Length, TagLength);
-
-            algorithm.Encrypt(nonce, token.Source, destinationData, destinationTag, token.AssociatedData);
-        }
-
-        protected override void Decrypt(CryptoToken token)
-        {
-            Span<byte> nonce = stackalloc byte[NonceLength];
-
-            BuildNonce(iv, token.SequenceNumber, nonce);
-
-            var sourceTag = token.Source.Slice(token.Source.Length - TagLength);
-            var sourceData = token.Source.Slice(0, token.Source.Length - TagLength);
-
-            algorithm.Decrypt(nonce, sourceData, sourceTag, token.Result, token.AssociatedData);
+            algorithm.Decrypt(nonce, data, tag, data, associatedData);
         }
 
         public override void Dispose()

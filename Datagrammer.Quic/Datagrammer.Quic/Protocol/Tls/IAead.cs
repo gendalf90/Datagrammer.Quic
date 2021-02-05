@@ -4,10 +4,10 @@ namespace Datagrammer.Quic.Protocol.Tls
 {
     public interface IAead : IDisposable
     {
-        CryptoToken StartEncryption(ReadOnlySpan<byte> data, Span<byte> destination);
+        int TagLength { get; }
 
-        CryptoToken StartDecryption(ReadOnlySpan<byte> data, Span<byte> destination);
+        void Encrypt(Span<byte> data, Span<byte> tag, ulong sequenceNumber, ReadOnlySpan<byte> associatedData);
 
-        void Finish(CryptoToken token);
+        void Decrypt(Span<byte> data, ReadOnlySpan<byte> tag, ulong sequenceNumber, ReadOnlySpan<byte> associatedData);
     }
 }

@@ -85,7 +85,7 @@ namespace Datagrammer.Quic.Protocol.Packet
 
             result |= Convert.ToInt32(isLongHeader) << 7;
 
-            if(isLongHeader && isRttType)
+            if (isLongHeader && isRttType)
             {
                 result |= 1 << 4;
             }
@@ -100,7 +100,10 @@ namespace Datagrammer.Quic.Protocol.Packet
                 result |= 3 << 4;
             }
 
-            result |= numberLength - 1;
+            if (numberLength > 0)
+            {
+                result |= numberLength - 1;
+            }
 
             return (byte)result;
         }

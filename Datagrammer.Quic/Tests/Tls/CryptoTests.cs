@@ -18,7 +18,6 @@ namespace Tests.Tls
         public void Encrypt_TlsAes128GcmSha256_ResultBytesAreExpected(string iv, string key, ulong seq, string header, string message, string expected)
         {
             //Arrange
-            var buffer = new byte[TlsBuffer.MaxRecordSize];
             var ivBytes = Utils.ParseHexString(iv);
             var keyBytes = Utils.ParseHexString(key);
             var messageBytes = Utils.ParseHexString(message);
@@ -26,16 +25,13 @@ namespace Tests.Tls
 
             using var aead = Cipher.TLS_AES_128_GCM_SHA256.CreateAead(ivBytes, keyBytes);
 
+            var tag = new byte[aead.TagLength];
+
             //Act
-            var token = aead.StartEncryption(messageBytes, buffer);
-
-            token.UseSequenceNumber(seq);
-            token.UseAssociatedData(headerBytes);
-
-            aead.Finish(token);
+            aead.Encrypt(messageBytes, tag, seq, headerBytes);
 
             //Assert
-            Assert.Equal(expected, Utils.ToHexString(token.Result.ToArray()), true);
+            Assert.Equal(expected, Utils.ToHexString(messageBytes) + Utils.ToHexString(tag), true);
         }
 
         [Theory]
@@ -49,7 +45,6 @@ namespace Tests.Tls
         public void Decrypt_TlsAes128GcmSha256_ResultBytesAreExpected(string iv, string key, ulong seq, string header, string message, string expected)
         {
             //Arrange
-            var buffer = new byte[TlsBuffer.MaxRecordSize];
             var ivBytes = Utils.ParseHexString(iv);
             var keyBytes = Utils.ParseHexString(key);
             var messageBytes = Utils.ParseHexString(message);
@@ -58,15 +53,14 @@ namespace Tests.Tls
             using var aead = Cipher.TLS_AES_128_GCM_SHA256.CreateAead(ivBytes, keyBytes);
 
             //Act
-            var token = aead.StartDecryption(messageBytes, buffer);
+            var encryptedLength = messageBytes.Length - aead.TagLength;
+            var encryptedBytes = messageBytes[..encryptedLength];
+            var tagBytes = messageBytes[encryptedLength..];
 
-            token.UseSequenceNumber(seq);
-            token.UseAssociatedData(headerBytes);
-
-            aead.Finish(token);
+            aead.Decrypt(encryptedBytes, tagBytes, seq, headerBytes);
 
             //Assert
-            Assert.Equal(expected, Utils.ToHexString(token.Result.ToArray()), true);
+            Assert.Equal(expected, Utils.ToHexString(encryptedBytes), true);
         }
 
         [Theory]
@@ -80,7 +74,6 @@ namespace Tests.Tls
         public void Encrypt_ChaCha20Poly1305_ResultBytesAreExpected(string iv, string key, ulong seq, string header, string message, string expected)
         {
             //Arrange
-            var buffer = new byte[TlsBuffer.MaxRecordSize];
             var ivBytes = Utils.ParseHexString(iv);
             var keyBytes = Utils.ParseHexString(key);
             var messageBytes = Utils.ParseHexString(message);
@@ -88,16 +81,13 @@ namespace Tests.Tls
 
             using var aead = Cipher.TLS_CHACHA20_POLY1305_SHA256.CreateAead(ivBytes, keyBytes);
 
+            var tag = new byte[aead.TagLength];
+
             //Act
-            var token = aead.StartEncryption(messageBytes, buffer);
-
-            token.UseSequenceNumber(seq);
-            token.UseAssociatedData(headerBytes);
-
-            aead.Finish(token);
+            aead.Encrypt(messageBytes, tag, seq, headerBytes);
 
             //Assert
-            Assert.Equal(expected, Utils.ToHexString(token.Result.ToArray()), true);
+            Assert.Equal(expected, Utils.ToHexString(messageBytes) + Utils.ToHexString(tag), true);
         }
 
         [Theory]
@@ -111,7 +101,6 @@ namespace Tests.Tls
         public void Decrypt_ChaCha20Poly1305_ResultBytesAreExpected(string iv, string key, ulong seq, string header, string message, string expected)
         {
             //Arrange
-            var buffer = new byte[TlsBuffer.MaxRecordSize];
             var ivBytes = Utils.ParseHexString(iv);
             var keyBytes = Utils.ParseHexString(key);
             var messageBytes = Utils.ParseHexString(message);
@@ -120,15 +109,14 @@ namespace Tests.Tls
             using var aead = Cipher.TLS_CHACHA20_POLY1305_SHA256.CreateAead(ivBytes, keyBytes);
 
             //Act
-            var token = aead.StartDecryption(messageBytes, buffer);
+            var encryptedLength = messageBytes.Length - aead.TagLength;
+            var encryptedBytes = messageBytes[..encryptedLength];
+            var tagBytes = messageBytes[encryptedLength..];
 
-            token.UseSequenceNumber(seq);
-            token.UseAssociatedData(headerBytes);
-
-            aead.Finish(token);
+            aead.Decrypt(encryptedBytes, tagBytes, seq, headerBytes);
 
             //Assert
-            Assert.Equal(expected, Utils.ToHexString(token.Result.ToArray()), true);
+            Assert.Equal(expected, Utils.ToHexString(encryptedBytes), true);
         }
 
         [Theory]
@@ -136,8 +124,6 @@ namespace Tests.Tls
         public void CreateMask_TlsAes128GcmSha256_ResultBytesAreExpected(string key, string sample, string expected)
         {
             //Arrange
-            var bufferIntrinsic = new byte[TlsBuffer.MaxRecordSize];
-            var buffer = new byte[TlsBuffer.MaxRecordSize];
             var keyBytes = Utils.ParseHexString(key);
             var sampleBytes = Utils.ParseHexString(sample);
 
@@ -147,12 +133,12 @@ namespace Tests.Tls
             using var cipher = Cipher.TLS_AES_128_GCM_SHA256.CreateCipher(keyBytes);
 
             //Act
-            Array.Resize(ref bufferIntrinsic, cipher.CreateMask(sampleBytes, bufferIntrinsic));
-            Array.Resize(ref buffer, cipher.CreateMask(sampleBytes, buffer));
+            var intrinsicResult = cipherIntrinsic.CreateMask(sampleBytes);
+            var result = cipher.CreateMask(sampleBytes);
 
             //Assert
-            Assert.Equal(expected, Utils.ToHexString(bufferIntrinsic), true);
-            Assert.Equal(expected, Utils.ToHexString(buffer), true);
+            Assert.Equal(expected, Utils.ToHexString(intrinsicResult.ToArray()), true);
+            Assert.Equal(expected, Utils.ToHexString(result.ToArray()), true);
         }
 
         [Theory]
@@ -160,17 +146,16 @@ namespace Tests.Tls
         public void CreateMask_TlsChaCha20Poly1305Sha256_ResultBytesAreExpected(string key, string sample, string expected)
         {
             //Arrange
-            var buffer = new byte[TlsBuffer.MaxRecordSize];
             var keyBytes = Utils.ParseHexString(key);
             var sampleBytes = Utils.ParseHexString(sample);
 
             using var cipher = Cipher.TLS_CHACHA20_POLY1305_SHA256.CreateCipher(keyBytes);
 
             //Act
-            Array.Resize(ref buffer, cipher.CreateMask(sampleBytes, buffer));
+            var result = cipher.CreateMask(sampleBytes);
 
             //Assert
-            Assert.Equal(expected, Utils.ToHexString(buffer), true);
+            Assert.Equal(expected, Utils.ToHexString(result.ToArray()), true);
         }
 
         public void Dispose()
