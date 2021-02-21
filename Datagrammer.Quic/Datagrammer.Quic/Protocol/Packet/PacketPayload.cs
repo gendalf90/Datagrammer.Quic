@@ -7,7 +7,6 @@ namespace Datagrammer.Quic.Protocol.Packet
     public static class PacketPayload
     {
         private const int SampleLength = 16;
-        private const int PayloadSkipLength = 4;
 
         public static ReadOnlyMemory<byte> SlicePacketBytes(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> afterPacketBytes)
         {
@@ -50,6 +49,17 @@ namespace Datagrammer.Quic.Protocol.Packet
         public static CursorWritingContext StartPacketWriting(MemoryCursor cursor, int startPacketOffset)
         {
             return new CursorWritingContext(cursor, startPacketOffset, cursor.AsOffset());
+        }
+
+        public static LongProtectedWritingContext StartLongProtectedPacketWriting(
+            MemoryCursor cursor, 
+            IAead aead, 
+            ICipher cipher, 
+            int startPacketOffset, 
+            PacketFirstByte firstByte,
+            PacketNumber packetNumber)
+        {
+            return new LongProtectedWritingContext(aead, cipher, cursor, startPacketOffset, cursor.AsOffset(), packetNumber, firstByte);
         }
 
         public readonly ref struct WritingContext
@@ -120,50 +130,64 @@ namespace Datagrammer.Quic.Protocol.Packet
             private readonly MemoryCursor cursor;
             private readonly int startPacketOffset;
             private readonly int startPayloadOffset;
-            private readonly int packetNumberLength;
-            private readonly ulong sequenceNumber;
-            private readonly ValueBuffer hp;
+            private readonly PacketNumber packetNumber;
+            private readonly PacketFirstByte packetFirstByte;
 
             public LongProtectedWritingContext(
+                IAead aead,
+                ICipher cipher,
                 MemoryCursor cursor,
                 int startPacketOffset,
-                int toWriteLengthOffset)
+                int startPayloadOffset,
+                PacketNumber packetNumber,
+                PacketFirstByte packetFirstByte)
             {
+                this.aead = aead;
+                this.cipher = cipher;
                 this.cursor = cursor;
                 this.startPacketOffset = startPacketOffset;
-                this.toWriteLengthOffset = toWriteLengthOffset;
+                this.startPayloadOffset = startPayloadOffset;
+                this.packetNumber = packetNumber;
+                this.packetFirstByte = packetFirstByte;
             }
 
             public void Dispose()
             {
-                var packetLength = cursor - startPacketOffset;
                 var payloadLength = cursor - startPayloadOffset;
-                var payload = cursor.Move(-payloadLength);
+                var payload = cursor.Peek(-payloadLength);
 
                 Span<byte> payloadBuffer = stackalloc byte[payloadLength];
                 Span<byte> tagBuffer = stackalloc byte[aead.TagLength];
 
                 payload.Span.CopyTo(payloadBuffer);
+                packetFirstByte.SlicePacketNumberBytes(cursor);
+
+                var packetLength = cursor - startPacketOffset;
+
+                cursor.Set(startPayloadOffset);
                 cursor.EncodeVariable32(packetLength);
 
-                var packetNumberBytes = payloadBuffer.Slice(0, packetNumberLength);
-                var toEncryptPayload = payloadBuffer.Slice(packetNumberLength);
+                var packetNumberBytes = packetFirstByte.SlicePacketNumberBytes(cursor).Span;
 
-                packetNumberBytes.CopyTo(cursor);
+                packetNumber.Fill(packetNumberBytes);
 
                 var headerLength = cursor - startPacketOffset;
                 var header = cursor.Peek(-headerLength);
 
-                aead.Encrypt(toEncryptPayload, tagBuffer, sequenceNumber, header.Span);
-                toEncryptPayload.CopyTo(cursor);
+                packetNumber.Encrypt(aead, payloadBuffer, tagBuffer, header.Span);
+                payloadBuffer.CopyTo(cursor);
                 tagBuffer.CopyTo(cursor);
 
-                var encryptedLength = toEncryptPayload.Length + tagBuffer.Length;
+                var endPacketOffset = cursor.AsOffset();
+                var encryptedLength = payloadBuffer.Length + tagBuffer.Length;
                 var encryptedData = cursor.Peek(-encryptedLength);
                 var sample = encryptedData.Slice(0, SampleLength);
                 var mask = cipher.CreateMask(sample.Span);
 
-                
+                packetNumber.Fill(packetNumberBytes, mask);
+                cursor.Set(startPacketOffset);
+                packetFirstByte.Mask(mask).Write(cursor);
+                cursor.Set(endPacketOffset);
             }
         }
     }

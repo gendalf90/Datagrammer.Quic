@@ -1,4 +1,6 @@
-﻿namespace Datagrammer.Quic.Protocol.Packet
+﻿using Datagrammer.Quic.Protocol.Tls;
+
+namespace Datagrammer.Quic.Protocol.Packet
 {
     public readonly struct InitialPacket
     {
@@ -66,6 +68,43 @@
             return true;
         }
 
+        //public static bool TryParseProtected(IAead aead, ICipher cipher, MemoryCursor cursor, out InitialPacket result)
+        //{
+        //    result = new InitialPacket();
+
+        //    var startOffset = cursor.AsOffset();
+        //    var firstByte = PacketFirstByte.Parse(cursor.Peek(1).Span[0]);
+
+        //    if (!firstByte.IsInitialType())
+        //    {
+        //        return false;
+        //    }
+
+        //    cursor.Move(1);
+
+        //    var version = PacketVersion.Parse(cursor);
+        //    var destinationConnectionId = PacketConnectionId.Parse(cursor);
+        //    var sourceConnectionId = PacketConnectionId.Parse(cursor);
+        //    var token = PacketToken.Parse(cursor);
+        //    var packetBytes = PacketPayload.SlicePacketBytes(cursor, startOffset);
+
+        //    using (packetBytes.SetCursor(cursor))
+        //    {
+        //        var packetNumberBytes = firstByte.SlicePacketNumberBytes(cursor);
+        //        var packetNumber = PacketNumber.Parse(packetNumberBytes);
+        //        var payload = cursor.SliceEnd();
+
+        //        result = new InitialPacket(version,
+        //                                   destinationConnectionId,
+        //                                   sourceConnectionId,
+        //                                   token,
+        //                                   packetNumber,
+        //                                   payload);
+        //    }
+
+        //    return true;
+        //}
+
         public static PacketPayload.CursorWritingContext StartWriting(MemoryCursor cursor,
                                                                       PacketVersion version,
                                                                       PacketConnectionId destinationConnectionId,
@@ -74,23 +113,45 @@
                                                                       PacketToken token)
         {
             var startOffset = cursor.AsOffset();
+            var firstByte = new PacketFirstByte()
+                .SetInitial()
+                .SetMaxPacketNumberLength();
 
-            ref byte firstByte = ref cursor.Move(1).Span[0];
-
+            firstByte.Write(cursor);
             version.WriteBytes(cursor);
             destinationConnectionId.WriteBytes(cursor);
             sourceConnectionId.WriteBytes(cursor);
             token.WriteBytes(cursor);
 
             var context = PacketPayload.StartPacketWriting(cursor, startOffset);
-            var lengthOfPacketNumber = packetNumber.Write(cursor);
+            var packetNumberBytes = firstByte.SlicePacketNumberBytes(cursor);
 
-            firstByte = new PacketFirstByte()
-                .SetInitial()
-                .SetPacketNumberLength(lengthOfPacketNumber)
-                .Build();
+            packetNumber.Fill(packetNumberBytes.Span);
 
             return context;
+        }
+
+        public static PacketPayload.LongProtectedWritingContext StartProtectedWriting(IAead aead,
+                                                                                      ICipher cipher,
+                                                                                      MemoryCursor cursor,
+                                                                                      PacketVersion version,
+                                                                                      PacketConnectionId destinationConnectionId,
+                                                                                      PacketConnectionId sourceConnectionId,
+                                                                                      PacketNumber packetNumber,
+                                                                                      PacketToken token)
+        {
+            var startPacketOffset = cursor.AsOffset();
+            var firstByte = new PacketFirstByte()
+                .SetInitial()
+                .SetMaxPacketNumberLength();
+
+            firstByte.Write(cursor);
+            version.WriteBytes(cursor);
+            destinationConnectionId.WriteBytes(cursor);
+            sourceConnectionId.WriteBytes(cursor);
+            token.WriteBytes(cursor);
+
+            return PacketPayload.StartLongProtectedPacketWriting(cursor, aead, cipher, startPacketOffset, firstByte, packetNumber);
         }
     }
 }

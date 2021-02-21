@@ -87,7 +87,7 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
                 .CreateAck(ecnFeedback.HasValue)
                 .Write(cursor);
 
-            largestAcknowledged.Write(cursor);
+            largestAcknowledged.WriteVariable(cursor);
             delay.Write(cursor);
 
             var startPayloadOffset = cursor.AsOffset();

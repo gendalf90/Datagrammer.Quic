@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Tls;
+using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
@@ -18,15 +19,6 @@ namespace Datagrammer.Quic.Protocol.Packet
             return new PacketNumber(value);
         }
 
-        public static PacketNumber ParseVariable(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
-        {
-            var value = VariableLengthEncoding.Decode(bytes.Span, out var decodedLength);
-
-            remainings = bytes.Slice(decodedLength);
-
-            return new PacketNumber(value);
-        }
-
         public static PacketNumber ParseVariable(MemoryCursor cursor)
         {
             var value = cursor.DecodeVariable();
@@ -34,42 +26,19 @@ namespace Datagrammer.Quic.Protocol.Packet
             return new PacketNumber(value);
         }
 
-        public int Write(ref Span<byte> destination)
-        {
-            var valueToWrite = value & uint.MaxValue;
-            var writtenLength = NetworkBitConverter.WriteUnaligned(destination, valueToWrite);
-
-            destination = destination.Slice(writtenLength);
-
-            return writtenLength;
-        }
-
-        public int Write(MemoryCursor cursor, int? minLength = null)
-        {
-            var length = NetworkBitConverter.GetByteLength(value);
-
-            if (minLength.HasValue)
-            {
-                length = Math.Max(minLength.Value, length);
-            }
-
-            var bytes = cursor.Move(length);
-            
-            NetworkBitConverter.WriteUnaligned(bytes.Span, value, length);
-
-            return length;
-        }
-
         public void Fill(Span<byte> bytes)
         {
             NetworkBitConverter.WriteUnaligned(bytes, value, bytes.Length);
         }
 
-        public void WriteVariable(Span<byte> destination, out Span<byte> remainings)
+        public void Fill(Span<byte> bytes, ValueBuffer mask)
         {
-            VariableLengthEncoding.Encode(destination, value, out var encodedLength);
+            NetworkBitConverter.WriteUnaligned(bytes, value, bytes.Length);
 
-            remainings = destination.Slice(encodedLength);
+            for (int i = 0, j = 1; i < bytes.Length && j < mask.Length; i++, j++)
+            {
+                bytes[i] ^= mask[j];
+            }
         }
 
         public void WriteVariable(MemoryCursor cursor)
@@ -99,9 +68,9 @@ namespace Datagrammer.Quic.Protocol.Packet
             return new PacketNumber(candidate);
         }
 
-        public ulong AsSequenceNumber()
+        public void Encrypt(IAead aead, Span<byte> data, Span<byte> tag, ReadOnlySpan<byte> associatedData)
         {
-            return value;
+            aead.Encrypt(data, tag, value, associatedData);
         }
 
         public PacketNumber GetNext()

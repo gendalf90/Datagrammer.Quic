@@ -11,13 +11,15 @@ namespace Datagrammer.Quic.Protocol.Packet
         private readonly bool isHandshakeType;
         private readonly bool isRetryType;
         private readonly int numberLength;
+        private readonly byte? mask;
 
         private PacketFirstByte(bool isLongHeader,
                                 bool isInitialType,
                                 bool isRttType,
                                 bool isHandshakeType,
                                 bool isRetryType,
-                                int numberLength)
+                                int numberLength,
+                                byte? mask)
         {
             this.isLongHeader = isLongHeader;
             this.isInitialType = isInitialType;
@@ -25,6 +27,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             this.isHandshakeType = isHandshakeType;
             this.isRetryType = isRetryType;
             this.numberLength = numberLength;
+            this.mask = mask;
         }
 
         public bool IsShortHeader() => !isLongHeader;
@@ -49,7 +52,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             return bytes.Slice(0, numberLength);
         }
 
-        public ReadOnlyMemory<byte> SlicePacketNumberBytes(MemoryCursor cursor)
+        public Memory<byte> SlicePacketNumberBytes(MemoryCursor cursor)
         {
             return cursor.Move(numberLength);
         }
@@ -76,7 +79,8 @@ namespace Datagrammer.Quic.Protocol.Packet
                                        isRttType,
                                        isHandshakeType,
                                        isRetryType,
-                                       numberLength);
+                                       numberLength,
+                                       null);
         }
 
         public byte Build()
@@ -105,7 +109,17 @@ namespace Datagrammer.Quic.Protocol.Packet
                 result |= numberLength - 1;
             }
 
+            if (mask.HasValue)
+            {
+                result ^= mask.Value & 0x0f;
+            }
+
             return (byte)result;
+        }
+
+        public void Write(MemoryCursor cursor)
+        {
+            cursor.Move(1).Span[0] = Build();
         }
 
         public PacketFirstByte SetPacketNumberLength(int length)
@@ -115,32 +129,42 @@ namespace Datagrammer.Quic.Protocol.Packet
                 throw new EncodingException();
             }
 
-            return new PacketFirstByte(isLongHeader, isInitialType, isRttType, isHandshakeType, isRttType, length);
+            return new PacketFirstByte(isLongHeader, isInitialType, isRttType, isHandshakeType, isRttType, length, mask);
+        }
+
+        public PacketFirstByte SetMaxPacketNumberLength()
+        {
+            return new PacketFirstByte(isLongHeader, isInitialType, isRttType, isHandshakeType, isRttType, 4, mask);
+        }
+
+        public PacketFirstByte Mask(ValueBuffer mask)
+        {
+            return new PacketFirstByte(isLongHeader, isInitialType, isRttType, isHandshakeType, isRttType, 4, mask[0]);
         }
 
         public PacketFirstByte SetShort()
         {
-            return new PacketFirstByte(false, false, false, false, false, numberLength);
+            return new PacketFirstByte(false, false, false, false, false, numberLength, mask);
         }
 
         public PacketFirstByte SetInitial()
         {
-            return new PacketFirstByte(true, true, false, false, false, numberLength);
+            return new PacketFirstByte(true, true, false, false, false, numberLength, mask);
         }
 
         public PacketFirstByte SetRtt()
         {
-            return new PacketFirstByte(true, false, true, false, false, numberLength);
+            return new PacketFirstByte(true, false, true, false, false, numberLength, mask);
         }
 
         public PacketFirstByte SetHandshake()
         {
-            return new PacketFirstByte(true, false, false, true, false, numberLength);
+            return new PacketFirstByte(true, false, false, true, false, numberLength, mask);
         }
 
         public PacketFirstByte SetRetry()
         {
-            return new PacketFirstByte(true, false, false, false, true, numberLength);
+            return new PacketFirstByte(true, false, false, false, true, numberLength, mask);
         }
     }
 }
