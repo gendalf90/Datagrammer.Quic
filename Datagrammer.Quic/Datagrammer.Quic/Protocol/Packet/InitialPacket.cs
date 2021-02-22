@@ -49,61 +49,47 @@ namespace Datagrammer.Quic.Protocol.Packet
             var destinationConnectionId = PacketConnectionId.Parse(cursor);
             var sourceConnectionId = PacketConnectionId.Parse(cursor);
             var token = PacketToken.Parse(cursor);
-            var packetBytes = PacketPayload.SlicePacketBytes(cursor, startOffset);
+            var payload = PacketPayload.SlicePacketBytes(cursor, firstByte, startOffset, out var packetNumber);
 
-            using (packetBytes.SetCursor(cursor))
-            {
-                var packetNumberBytes = firstByte.SlicePacketNumberBytes(cursor);
-                var packetNumber = PacketNumber.Parse(packetNumberBytes);
-                var payload = cursor.SliceEnd();
-
-                result = new InitialPacket(version,
-                                           destinationConnectionId,
-                                           sourceConnectionId,
-                                           token,
-                                           packetNumber,
-                                           payload);
-            }
+            result = new InitialPacket(version,
+                                       destinationConnectionId,
+                                       sourceConnectionId,
+                                       token,
+                                       packetNumber,
+                                       payload);
 
             return true;
         }
 
-        //public static bool TryParseProtected(IAead aead, ICipher cipher, MemoryCursor cursor, out InitialPacket result)
-        //{
-        //    result = new InitialPacket();
+        public static bool TryParseProtected(IAead aead, ICipher cipher, MemoryCursor cursor, out InitialPacket result)
+        {
+            result = new InitialPacket();
 
-        //    var startOffset = cursor.AsOffset();
-        //    var firstByte = PacketFirstByte.Parse(cursor.Peek(1).Span[0]);
+            var startOffset = cursor.AsOffset();
+            var firstByte = PacketFirstByte.Parse(cursor.Peek(1).Span[0]);
 
-        //    if (!firstByte.IsInitialType())
-        //    {
-        //        return false;
-        //    }
+            if (!firstByte.IsInitialType())
+            {
+                return false;
+            }
 
-        //    cursor.Move(1);
+            cursor.Move(1);
 
-        //    var version = PacketVersion.Parse(cursor);
-        //    var destinationConnectionId = PacketConnectionId.Parse(cursor);
-        //    var sourceConnectionId = PacketConnectionId.Parse(cursor);
-        //    var token = PacketToken.Parse(cursor);
-        //    var packetBytes = PacketPayload.SlicePacketBytes(cursor, startOffset);
+            var version = PacketVersion.Parse(cursor);
+            var destinationConnectionId = PacketConnectionId.Parse(cursor);
+            var sourceConnectionId = PacketConnectionId.Parse(cursor);
+            var token = PacketToken.Parse(cursor);
+            var payload = PacketPayload.SliceLongProtectedPacketBytes(cursor, aead, cipher, startOffset, firstByte, out var packetNumber);
 
-        //    using (packetBytes.SetCursor(cursor))
-        //    {
-        //        var packetNumberBytes = firstByte.SlicePacketNumberBytes(cursor);
-        //        var packetNumber = PacketNumber.Parse(packetNumberBytes);
-        //        var payload = cursor.SliceEnd();
+            result = new InitialPacket(version,
+                                       destinationConnectionId,
+                                       sourceConnectionId,
+                                       token,
+                                       packetNumber,
+                                       payload);
 
-        //        result = new InitialPacket(version,
-        //                                   destinationConnectionId,
-        //                                   sourceConnectionId,
-        //                                   token,
-        //                                   packetNumber,
-        //                                   payload);
-        //    }
-
-        //    return true;
-        //}
+            return true;
+        }
 
         public static PacketPayload.CursorWritingContext StartWriting(MemoryCursor cursor,
                                                                       PacketVersion version,

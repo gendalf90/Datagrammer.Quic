@@ -50,7 +50,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             var sourceConnectionId = PacketConnectionId.Parse(afterDestinationConnectionIdBytes, out var afterSourceConnectionIdBytes);
             var packetBytes = PacketPayload.SlicePacketBytes(afterSourceConnectionIdBytes, out var afterPacketBytes);
             var packetNumberBytes = firstByte.SlicePacketNumberBytes(packetBytes, out var afterPacketNumberBytes);
-            var number = PacketNumber.Parse(packetNumberBytes);
+            var number = PacketNumber.Parse(packetNumberBytes.Span);
 
             remainings = afterPacketBytes;
             result = new HandshakePacket(version,

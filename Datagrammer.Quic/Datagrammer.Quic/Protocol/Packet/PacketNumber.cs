@@ -12,9 +12,9 @@ namespace Datagrammer.Quic.Protocol.Packet
             this.value = value;
         }
 
-        public static PacketNumber Parse(ReadOnlyMemory<byte> bytes)
+        public static PacketNumber Parse(ReadOnlySpan<byte> bytes)
         {
-            var value = NetworkBitConverter.ParseUnaligned(bytes.Span);
+            var value = NetworkBitConverter.ParseUnaligned(bytes);
 
             return new PacketNumber(value);
         }
@@ -31,10 +31,8 @@ namespace Datagrammer.Quic.Protocol.Packet
             NetworkBitConverter.WriteUnaligned(bytes, value, bytes.Length);
         }
 
-        public void Fill(Span<byte> bytes, ValueBuffer mask)
+        public static void Mask(Span<byte> bytes, ValueBuffer mask)
         {
-            NetworkBitConverter.WriteUnaligned(bytes, value, bytes.Length);
-
             for (int i = 0, j = 1; i < bytes.Length && j < mask.Length; i++, j++)
             {
                 bytes[i] ^= mask[j];
@@ -71,6 +69,11 @@ namespace Datagrammer.Quic.Protocol.Packet
         public void Encrypt(IAead aead, Span<byte> data, Span<byte> tag, ReadOnlySpan<byte> associatedData)
         {
             aead.Encrypt(data, tag, value, associatedData);
+        }
+
+        public void Decrypt(IAead aead, Span<byte> data, ReadOnlySpan<byte> tag, ReadOnlySpan<byte> associatedData)
+        {
+            aead.Decrypt(data, tag, value, associatedData);
         }
 
         public PacketNumber GetNext()

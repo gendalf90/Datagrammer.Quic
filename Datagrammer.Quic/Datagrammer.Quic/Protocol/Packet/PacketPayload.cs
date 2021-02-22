@@ -7,6 +7,7 @@ namespace Datagrammer.Quic.Protocol.Packet
     public static class PacketPayload
     {
         private const int SampleLength = 16;
+        private const int SkipToSampleLength = 4;
 
         public static ReadOnlyMemory<byte> SlicePacketBytes(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> afterPacketBytes)
         {
@@ -23,13 +24,54 @@ namespace Datagrammer.Quic.Protocol.Packet
             return afterLengthBytes.Slice(0, length);
         }
 
-        public static MemoryBuffer SlicePacketBytes(MemoryCursor cursor, int startPacketOffset)
+        public static MemoryBuffer SlicePacketBytes(MemoryCursor cursor, PacketFirstByte firstByte, int startPacketOffset, out PacketNumber packetNumber)
         {
             var readLength = cursor - startPacketOffset;
             var packetLength = cursor.DecodeVariable32();
-            var payloadLength = packetLength - readLength;
+            var packetNumberBytes = firstByte.SlicePacketNumberBytes(cursor);
+            var payloadLength = packetLength - readLength - packetNumberBytes.Length;
+
+            packetNumber = PacketNumber.Parse(packetNumberBytes.Span);
 
             return cursor.Slice(payloadLength);
+        }
+
+        public static MemoryBuffer SliceLongProtectedPacketBytes(
+            MemoryCursor cursor,
+            IAead aead, 
+            ICipher cipher,
+            int startPacketOffset,
+            PacketFirstByte firstByte,  
+            out PacketNumber packetNumber)
+        {
+            var readLength = cursor - startPacketOffset;
+            var packetLength = cursor.DecodeVariable32();
+            var startPayloadOffset = cursor.AsOffset();
+
+            cursor.Move(SkipToSampleLength);
+
+            var sample = cursor.Move(SampleLength);
+            var mask = cipher.CreateMask(sample.Span);
+
+            cursor.Set(startPacketOffset);
+            firstByte.Mask(mask).Write(cursor);
+            cursor.Set(startPayloadOffset);
+
+            var packetNumberBytes = firstByte.Mask(mask).SlicePacketNumberBytes(cursor);
+            var headerLength = cursor - startPacketOffset;
+            var headerBytes = cursor.Peek(-headerLength);
+            var payloadLength = packetLength - readLength - packetNumberBytes.Length;
+            var payload = cursor.Slice(payloadLength);
+            var payloadBytes = cursor.Peek(-payloadLength);
+            var tagBytes = cursor.Move(aead.TagLength);
+
+            PacketNumber.Mask(packetNumberBytes.Span, mask);
+
+            packetNumber = PacketNumber.Parse(packetNumberBytes.Span);
+
+            packetNumber.Decrypt(aead, payloadBytes.Span, tagBytes.Span, headerBytes.Span);
+
+            return payload;
         }
 
         public static WritingContext StartPacketWriting(ref Span<byte> bytes)
@@ -184,7 +226,8 @@ namespace Datagrammer.Quic.Protocol.Packet
                 var sample = encryptedData.Slice(0, SampleLength);
                 var mask = cipher.CreateMask(sample.Span);
 
-                packetNumber.Fill(packetNumberBytes, mask);
+                packetNumber.Fill(packetNumberBytes);
+                PacketNumber.Mask(packetNumberBytes, mask);
                 cursor.Set(startPacketOffset);
                 packetFirstByte.Mask(mask).Write(cursor);
                 cursor.Set(endPacketOffset);

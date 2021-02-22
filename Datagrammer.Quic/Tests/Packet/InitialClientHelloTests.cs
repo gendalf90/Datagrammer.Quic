@@ -118,47 +118,50 @@ namespace Tests.Packet
             Assert.Equal(clientHelloBytes, Utils.ToHexString(cryptoFrame.Data.Read(cursor).ToArray()), true);
         }
 
-        //[Fact]
-        //public void Read_Protected_ResultsAreExpected()
-        //{
-        //    //Arrange
-        //    var messageBytes = Utils.ParseHexString(GetMessageHex());
-        //    var version = PacketVersion.CreateByDraft(32);
-        //    var connectionIds = GetConnectionIdsHex();
-        //    var sourceConnectionId = PacketConnectionId.Parse(Utils.ParseHexString(connectionIds.SourceConnectionIdHex));
-        //    var destConnectionId = PacketConnectionId.Parse(Utils.ParseHexString(connectionIds.DestConnectionIdHex));
-        //    var packetNumber = PacketNumber.Parse(Utils.ParseHexString(GetPacketNumberHex()));
-        //    var token = PacketToken.Empty;
-        //    var clientHelloBytes = GetTlsClientHelloHex();
-        //    var cryptoFrame = new CryptoFrame();
-        //    var paddingFrameCount = 0;
+        [Fact]
+        public void Read_Protected_ResultsAreExpected()
+        {
+            //Arrange
+            var messageBytes = Utils.ParseHexString(GetProtectedMessageHex());
+            var version = PacketVersion.CreateByDraft(32);
+            var connectionIds = GetConnectionIdsHex();
+            var sourceConnectionId = PacketConnectionId.Parse(Utils.ParseHexString(connectionIds.SourceConnectionIdHex));
+            var destConnectionId = PacketConnectionId.Parse(Utils.ParseHexString(connectionIds.DestConnectionIdHex));
+            var packetNumber = PacketNumber.Parse(Utils.ParseHexString(GetPacketNumberHex()));
+            var token = PacketToken.Empty;
+            var clientHelloBytes = GetTlsClientHelloHex();
+            var cryptoFrame = new CryptoFrame();
+            var paddingFrameCount = 0;
+            var secrets = GetSecrets();
+            var aead = Cipher.TLS_AES_128_GCM_SHA256.CreateAead(Utils.ParseHexString(secrets.Iv), Utils.ParseHexString(secrets.Key));
+            var cipher = Cipher.TLS_AES_128_GCM_SHA256.CreateCipher(Utils.ParseHexString(secrets.Hp));
 
-        //    //Act
-        //    var cursor = new MemoryCursor(messageBytes);
-        //    var result = InitialPacket.TryParse(cursor, out var packet);
+            //Act
+            var cursor = new MemoryCursor(messageBytes);
+            var result = InitialPacket.TryParseProtected(aead, cipher, cursor, out var packet);
 
-        //    using (packet.Payload.SetCursor(cursor))
-        //    {
-        //        result &= CryptoFrame.TryParse(cursor, out cryptoFrame);
+            using (packet.Payload.SetCursor(cursor))
+            {
+                result &= CryptoFrame.TryParse(cursor, out cryptoFrame);
 
-        //        paddingFrameCount = PaddingFrame.SkipRange(cursor);
+                paddingFrameCount = PaddingFrame.SkipRange(cursor);
 
-        //        result &= cursor.IsEnd();
-        //    }
+                result &= cursor.IsEnd();
+            }
 
-        //    result &= cursor.IsEnd();
+            result &= cursor.IsEnd();
 
-        //    //Assert
-        //    Assert.True(result);
-        //    Assert.Equal(917, paddingFrameCount);
-        //    Assert.Equal(version, packet.Version);
-        //    Assert.Equal(sourceConnectionId, packet.SourceConnectionId);
-        //    Assert.Equal(destConnectionId, packet.DestinationConnectionId);
-        //    Assert.Equal(packetNumber, packet.Number);
-        //    Assert.Equal(token, packet.Token);
-        //    Assert.Equal(0, cryptoFrame.Offset);
-        //    Assert.Equal(clientHelloBytes, Utils.ToHexString(cryptoFrame.Data.Read(cursor).ToArray()), true);
-        //}
+            //Assert
+            Assert.True(result);
+            Assert.Equal(917, paddingFrameCount);
+            Assert.Equal(version, packet.Version);
+            Assert.Equal(sourceConnectionId, packet.SourceConnectionId);
+            Assert.Equal(destConnectionId, packet.DestinationConnectionId);
+            Assert.Equal(packetNumber, packet.Number);
+            Assert.Equal(token, packet.Token);
+            Assert.Equal(0, cryptoFrame.Offset);
+            Assert.Equal(clientHelloBytes, Utils.ToHexString(cryptoFrame.Data.Read(cursor).ToArray()), true);
+        }
 
         private string GetMessageHex()
         {
