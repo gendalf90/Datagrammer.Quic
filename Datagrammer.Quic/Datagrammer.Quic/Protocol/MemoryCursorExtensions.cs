@@ -54,7 +54,7 @@ namespace Datagrammer.Quic.Protocol
 
             cursor.Move(length);
 
-            return new MemoryBuffer(Math.Min(startOffset, cursor), length);
+            return new MemoryBuffer(Math.Min(startOffset, cursor), Math.Abs(length));
         }
 
         public static MemoryBuffer SliceEnd(this MemoryCursor cursor)

@@ -15,6 +15,23 @@ namespace Datagrammer.Quic.Protocol.Packet
             this.buffer = buffer;
         }
 
+        public bool TrySliceValue(MemoryCursor cursor)
+        {
+            if (!cursor.TryPeek(buffer.Length, out var bytes))
+            {
+                return false;
+            }
+
+            if (buffer != bytes.Span)
+            {
+                return false;
+            }
+
+            cursor.Move(buffer.Length);
+
+            return true;
+        }
+
         public override bool Equals(object obj)
         {
             return obj is PacketConnectionId version && Equals(version);
@@ -64,16 +81,16 @@ namespace Datagrammer.Quic.Protocol.Packet
             return default;
         }
 
-        public static PacketConnectionId Parse(ReadOnlyMemory<byte> bytes)
+        public static PacketConnectionId Parse(ReadOnlySpan<byte> bytes)
         {
-            var length = bytes.Span[0];
+            var length = bytes[0];
 
             if (bytes.Length != length + 1 || length > MaxLength)
             {
                 throw new EncodingException();
             }
 
-            var value = bytes.Slice(1, length).Span;
+            var value = bytes.Slice(1, length);
 
             return new PacketConnectionId(new ValueBuffer(value));
         }
@@ -94,6 +111,11 @@ namespace Datagrammer.Quic.Protocol.Packet
             bytes[0] = (byte)buffer.Length;
 
             buffer.CopyTo(bytes.Slice(1));
+        }
+
+        public void WriteValueBytes(MemoryCursor cursor)
+        {
+            buffer.CopyTo(cursor);
         }
 
         public (ValueBuffer Key, ValueBuffer Iv, ValueBuffer Hp) CreateClientInitialSecrets(ICipherHash hash)

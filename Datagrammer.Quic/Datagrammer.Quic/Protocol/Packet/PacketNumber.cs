@@ -3,7 +3,7 @@ using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
-    public readonly struct PacketNumber : IComparable<PacketNumber>, IEquatable<PacketNumber>
+    public readonly struct PacketNumber : IEquatable<PacketNumber>, IComparable<PacketNumber>
     {
         private readonly ulong value;
 
@@ -12,31 +12,61 @@ namespace Datagrammer.Quic.Protocol.Packet
             this.value = value;
         }
 
-        public static PacketNumber Parse(ReadOnlySpan<byte> bytes)
+        public static PacketNumber Parse(ReadOnlySpan<byte> bytes, ValueBuffer? mask = null)
         {
-            var value = NetworkBitConverter.ParseUnaligned(bytes);
+            if (!mask.HasValue)
+            {
+                return new PacketNumber(NetworkBitConverter.ParseUnaligned(bytes));
+            }
 
-            return new PacketNumber(value);
+            Span<byte> buffer = stackalloc byte[bytes.Length];
+
+            bytes.CopyTo(buffer);
+
+            Mask(buffer, mask.Value);
+
+            return new PacketNumber(NetworkBitConverter.ParseUnaligned(buffer));
         }
 
         public static PacketNumber ParseVariable(MemoryCursor cursor)
         {
-            var value = cursor.DecodeVariable();
-
-            return new PacketNumber(value);
+            return new PacketNumber(cursor.DecodeVariable());
         }
 
-        public void Fill(Span<byte> bytes)
+        public void Fill(Span<byte> bytes, ValueBuffer? mask = null)
         {
             NetworkBitConverter.WriteUnaligned(bytes, value, bytes.Length);
+
+            if (mask.HasValue)
+            {
+                Mask(bytes, mask.Value);
+            }
         }
 
-        public static void Mask(Span<byte> bytes, ValueBuffer mask)
+        public int Write(MemoryCursor cursor, int? minLength = null, ValueBuffer? mask = null)
         {
-            for (int i = 0, j = 1; i < bytes.Length && j < mask.Length; i++, j++)
+            if (minLength < 0)
             {
-                bytes[i] ^= mask[j];
+                throw new ArgumentOutOfRangeException(nameof(minLength));
             }
+
+            var length = NetworkBitConverter.GetByteLength(value);
+
+            if (minLength.HasValue)
+            {
+                length = Math.Max(length, minLength.Value);
+            }
+
+            var bytes = cursor.Move(length);
+
+            NetworkBitConverter.WriteUnaligned(bytes.Span, value, length);
+
+            if (mask.HasValue)
+            {
+                Mask(bytes.Span, mask.Value);
+            }
+
+            return length;
         }
 
         public void WriteVariable(MemoryCursor cursor)
@@ -46,7 +76,7 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public PacketNumber DecodeByLargestAcknowledged(PacketNumber largestAcknowledged)
         {
-            var bits = NetworkBitConverter.GetBitLength(value);
+            var bits = NetworkBitConverter.GetByteLength(value) * 8;
             var expected = largestAcknowledged.value + 1;
             var win = 1UL << bits;
             var hwin = win / 2;
@@ -66,6 +96,38 @@ namespace Datagrammer.Quic.Protocol.Packet
             return new PacketNumber(candidate);
         }
 
+        public PacketNumber EncodeByLargestAcknowledged(PacketNumber largestAcknowledged)
+        {
+            var range = 2 * (value - largestAcknowledged.value) + 1;
+
+            var resultLength = range switch
+            {
+                > 0xffffff => 4,
+                > 0xffff => 3,
+                > 0xff => 2,
+                _ => 1
+            };
+
+            var currentLength = NetworkBitConverter.GetByteLength(value);
+
+            Span<byte> currentBytes = stackalloc byte[currentLength];
+
+            NetworkBitConverter.WriteUnaligned(currentBytes, value, currentLength);
+
+            var resultBytes = currentBytes.Slice(currentLength - resultLength);
+            var resultValue = NetworkBitConverter.ParseUnaligned(resultBytes);
+
+            return new PacketNumber(resultValue);
+        }
+
+        private static void Mask(Span<byte> bytes, ValueBuffer mask)
+        {
+            for (int i = 0, j = 1; i < bytes.Length && j < mask.Length; i++, j++)
+            {
+                bytes[i] ^= mask[j];
+            }
+        }
+
         public void Encrypt(IAead aead, Span<byte> data, Span<byte> tag, ReadOnlySpan<byte> associatedData)
         {
             aead.Encrypt(data, tag, value, associatedData);
@@ -83,6 +145,21 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public static PacketNumber Initial { get; } = new PacketNumber(0);
 
+        public static bool operator ==(PacketNumber first, PacketNumber second)
+        {
+            return first.Equals(second);
+        }
+
+        public static bool operator !=(PacketNumber first, PacketNumber second)
+        {
+            return !first.Equals(second);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is PacketNumber other && Equals(other);
+        }
+
         public bool Equals(PacketNumber other)
         {
             return value == other.value;
@@ -93,24 +170,9 @@ namespace Datagrammer.Quic.Protocol.Packet
             return value.CompareTo(other.value);
         }
 
-        public override bool Equals(object obj)
-        {
-            return obj is PacketNumber number && Equals(number);
-        }
-
         public override int GetHashCode()
         {
             return value.GetHashCode();
-        }
-
-        public static bool operator ==(PacketNumber first, PacketNumber second)
-        {
-            return first.Equals(second);
-        }
-
-        public static bool operator !=(PacketNumber first, PacketNumber second)
-        {
-            return !first.Equals(second);
         }
 
         public override string ToString()

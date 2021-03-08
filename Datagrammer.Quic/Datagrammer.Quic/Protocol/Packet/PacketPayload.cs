@@ -1,5 +1,4 @@
-﻿using Datagrammer.Quic.Protocol.Error;
-using Datagrammer.Quic.Protocol.Tls;
+﻿using Datagrammer.Quic.Protocol.Tls;
 using System;
 
 namespace Datagrammer.Quic.Protocol.Packet
@@ -9,22 +8,12 @@ namespace Datagrammer.Quic.Protocol.Packet
         private const int SampleLength = 16;
         private const int SkipToSampleLength = 4;
 
-        public static ReadOnlyMemory<byte> SlicePacketBytes(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> afterPacketBytes)
-        {
-            var length = VariableLengthEncoding.Decode32(bytes.Span, out var decodedBytesLength);
-            var afterLengthBytes = bytes.Slice(decodedBytesLength);
-
-            if(afterLengthBytes.Length < length)
-            {
-                throw new EncodingException();
-            }
-
-            afterPacketBytes = afterLengthBytes.Slice(length);
-
-            return afterLengthBytes.Slice(0, length);
-        }
-
-        public static MemoryBuffer SlicePacketBytes(MemoryCursor cursor, PacketFirstByte firstByte, int startPacketOffset, out PacketNumber packetNumber)
+        public static MemoryBuffer SlicePacketBytes(
+            MemoryCursor cursor, 
+            PacketFirstByte firstByte, 
+            int startPacketOffset, 
+            PacketNumber? largestAcknowledgedPacketNumber, 
+            out PacketNumber packetNumber)
         {
             var readLength = cursor - startPacketOffset;
             var packetLength = cursor.DecodeVariable32();
@@ -32,6 +21,11 @@ namespace Datagrammer.Quic.Protocol.Packet
             var payloadLength = packetLength - readLength - packetNumberBytes.Length;
 
             packetNumber = PacketNumber.Parse(packetNumberBytes.Span);
+
+            if (largestAcknowledgedPacketNumber.HasValue)
+            {
+                packetNumber = packetNumber.DecodeByLargestAcknowledged(largestAcknowledgedPacketNumber.Value);
+            }
 
             return cursor.Slice(payloadLength);
         }
@@ -41,7 +35,8 @@ namespace Datagrammer.Quic.Protocol.Packet
             IAead aead, 
             ICipher cipher,
             int startPacketOffset,
-            PacketFirstByte firstByte,  
+            PacketFirstByte firstByte,
+            PacketNumber? largestAcknowledgedPacketNumber,
             out PacketNumber packetNumber)
         {
             var readLength = cursor - startPacketOffset;
@@ -64,33 +59,77 @@ namespace Datagrammer.Quic.Protocol.Packet
             var payload = cursor.Slice(payloadLength);
             var payloadBytes = cursor.Peek(-payloadLength);
             var tagBytes = cursor.Move(aead.TagLength);
+            var encodedPacketNumber = PacketNumber.Parse(packetNumberBytes.Span, mask);
 
-            PacketNumber.Mask(packetNumberBytes.Span, mask);
+            encodedPacketNumber.Fill(packetNumberBytes.Span);
 
-            packetNumber = PacketNumber.Parse(packetNumberBytes.Span);
+            packetNumber = largestAcknowledgedPacketNumber.HasValue
+                ? encodedPacketNumber.DecodeByLargestAcknowledged(largestAcknowledgedPacketNumber.Value)
+                : encodedPacketNumber;
 
             packetNumber.Decrypt(aead, payloadBytes.Span, tagBytes.Span, headerBytes.Span);
 
             return payload;
         }
 
-        public static WritingContext StartPacketWriting(ref Span<byte> bytes)
-        {
-            if(bytes.Length < 4)
-            {
-                throw new EncodingException();
-            }
-
-            var context = new WritingContext(bytes);
-
-            bytes = bytes.Slice(4);
-
-            return context;
-        }
-
         public static CursorWritingContext StartPacketWriting(MemoryCursor cursor, int startPacketOffset)
         {
             return new CursorWritingContext(cursor, startPacketOffset, cursor.AsOffset());
+        }
+
+        public static MemoryBuffer SliceShortProtectedPacketBytes(
+            MemoryCursor cursor,
+            IAead aead,
+            ICipher cipher,
+            int startPacketOffset,
+            PacketFirstByte firstByte,
+            PacketNumber largestAcknowledgedPacketNumber,
+            out PacketNumber packetNumber)
+        {
+            var startPacketNumberOffset = cursor.AsOffset();
+
+            cursor.Move(SkipToSampleLength);
+
+            var sample = cursor.Move(SampleLength);
+            var mask = cipher.CreateMask(sample.Span);
+
+            cursor.Set(startPacketOffset);
+            firstByte.Mask(mask).Write(cursor);
+            cursor.Set(startPacketNumberOffset);
+
+            var packetNumberBytes = firstByte.Mask(mask).SlicePacketNumberBytes(cursor);
+            var headerLength = cursor - startPacketOffset;
+            var headerBytes = cursor.Peek(-headerLength);
+            var startPayloadOffset = cursor.AsOffset();
+
+            cursor.MoveEnd();
+
+            var tagBytes = cursor.Move(-aead.TagLength);
+            var payloadLength = cursor - startPayloadOffset;
+            var payloadBytes = cursor.Peek(-payloadLength);
+            var payload = cursor.Slice(-payloadLength);
+            var encodedPacketNumber = PacketNumber.Parse(packetNumberBytes.Span, mask);
+
+            encodedPacketNumber.Fill(packetNumberBytes.Span);
+
+            packetNumber = encodedPacketNumber.DecodeByLargestAcknowledged(largestAcknowledgedPacketNumber);
+
+            packetNumber.Decrypt(aead, payloadBytes.Span, tagBytes.Span, headerBytes.Span);
+            cursor.MoveEnd();
+
+            return payload;
+        }
+
+        public static ShortProtectedWritingContext StartShortProtectedPacketWriting(
+            MemoryCursor cursor,
+            IAead aead,
+            ICipher cipher,
+            int startPacketOffset,
+            PacketFirstByte firstByte,
+            PacketNumber packetNumber,
+            PacketNumber largestAcknowledgedPacketNumber)
+        {
+            return new ShortProtectedWritingContext(aead, cipher, cursor, startPacketOffset, cursor.AsOffset(), packetNumber, largestAcknowledgedPacketNumber, firstByte);
         }
 
         public static LongProtectedWritingContext StartLongProtectedPacketWriting(
@@ -99,40 +138,10 @@ namespace Datagrammer.Quic.Protocol.Packet
             ICipher cipher, 
             int startPacketOffset, 
             PacketFirstByte firstByte,
-            PacketNumber packetNumber)
+            PacketNumber packetNumber,
+            PacketNumber? largestAcknowledgedPacketNumber)
         {
-            return new LongProtectedWritingContext(aead, cipher, cursor, startPacketOffset, cursor.AsOffset(), packetNumber, firstByte);
-        }
-
-        public readonly ref struct WritingContext
-        {
-            private readonly Span<byte> start;
-
-            public WritingContext(Span<byte> start)
-            {
-                this.start = start;
-            }
-
-            public void Complete(ref Span<byte> bytes)
-            {
-                var offset = start.Length - bytes.Length;
-
-                if (offset < 4)
-                {
-                    throw new EncodingException();
-                }
-
-                var payloadLength = offset - 4;
-
-                VariableLengthEncoding.Encode(start, (ulong)payloadLength, out var encodedLength);
-
-                var afterLengthBytes = start.Slice(encodedLength);
-                var payload = start.Slice(4, payloadLength);
-
-                payload.CopyTo(afterLengthBytes);
-
-                bytes = start.Slice(encodedLength + payloadLength);
-            }
+            return new LongProtectedWritingContext(aead, cipher, cursor, startPacketOffset, cursor.AsOffset(), packetNumber, largestAcknowledgedPacketNumber, firstByte);
         }
 
         public readonly ref struct CursorWritingContext
@@ -165,6 +174,79 @@ namespace Datagrammer.Quic.Protocol.Packet
             }
         }
 
+        public readonly ref struct ShortProtectedWritingContext
+        {
+            private readonly IAead aead;
+            private readonly ICipher cipher;
+            private readonly MemoryCursor cursor;
+            private readonly int startPacketOffset;
+            private readonly int startPayloadOffset;
+            private readonly PacketNumber packetNumber;
+            private readonly PacketNumber largestAcknowledgedPacketNumber;
+            private readonly PacketFirstByte packetFirstByte;
+
+            public ShortProtectedWritingContext(
+                IAead aead,
+                ICipher cipher,
+                MemoryCursor cursor,
+                int startPacketOffset,
+                int startPayloadOffset,
+                PacketNumber packetNumber,
+                PacketNumber largestAcknowledgedPacketNumber,
+                PacketFirstByte packetFirstByte)
+            {
+                this.aead = aead;
+                this.cipher = cipher;
+                this.cursor = cursor;
+                this.startPacketOffset = startPacketOffset;
+                this.startPayloadOffset = startPayloadOffset;
+                this.packetNumber = packetNumber;
+                this.largestAcknowledgedPacketNumber = largestAcknowledgedPacketNumber;
+                this.packetFirstByte = packetFirstByte;
+            }
+
+            public void Dispose()
+            {
+                var payloadLength = cursor - startPayloadOffset;
+                var payload = cursor.Move(-payloadLength);
+
+                Span<byte> payloadBuffer = stackalloc byte[payloadLength];
+                Span<byte> tagBuffer = stackalloc byte[aead.TagLength];
+
+                payload.Span.CopyTo(payloadBuffer);
+
+                var encodedPacketNumber = packetNumber.EncodeByLargestAcknowledged(largestAcknowledgedPacketNumber);
+                var minPacketNumberLength = SkipToSampleLength - payloadLength;
+                var packetNumberLength = minPacketNumberLength < 0
+                    ? encodedPacketNumber.Write(cursor)
+                    : encodedPacketNumber.Write(cursor, minPacketNumberLength);
+                var startEncryptedPayloadOffset = cursor.AsOffset();
+                var packetFirstByteWithNumberLength = packetFirstByte.SetPacketNumberLength(packetNumberLength);
+                var packetNumberBytes = cursor.Peek(-packetNumberLength);
+                var headerLength = cursor - startPacketOffset;
+                var header = cursor.Move(-headerLength);
+
+                packetFirstByteWithNumberLength.Write(cursor);
+                cursor.Set(startEncryptedPayloadOffset);
+                packetNumber.Encrypt(aead, payloadBuffer, tagBuffer, header.Span);
+                payloadBuffer.CopyTo(cursor);
+                tagBuffer.CopyTo(cursor);
+
+                var endPacketOffset = cursor.AsOffset();
+
+                cursor.Set(startPayloadOffset);
+                cursor.Move(SkipToSampleLength);
+
+                var sample = cursor.Move(SampleLength);
+                var mask = cipher.CreateMask(sample.Span);
+
+                encodedPacketNumber.Fill(packetNumberBytes.Span, mask);
+                cursor.Set(startPacketOffset);
+                packetFirstByteWithNumberLength.Mask(mask).Write(cursor);
+                cursor.Set(endPacketOffset);
+            }
+        }
+
         public readonly ref struct LongProtectedWritingContext
         {
             private readonly IAead aead;
@@ -173,6 +255,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             private readonly int startPacketOffset;
             private readonly int startPayloadOffset;
             private readonly PacketNumber packetNumber;
+            private readonly PacketNumber? largestAcknowledgedPacketNumber;
             private readonly PacketFirstByte packetFirstByte;
 
             public LongProtectedWritingContext(
@@ -182,6 +265,7 @@ namespace Datagrammer.Quic.Protocol.Packet
                 int startPacketOffset,
                 int startPayloadOffset,
                 PacketNumber packetNumber,
+                PacketNumber? largestAcknowledgedPacketNumber,
                 PacketFirstByte packetFirstByte)
             {
                 this.aead = aead;
@@ -190,6 +274,7 @@ namespace Datagrammer.Quic.Protocol.Packet
                 this.startPacketOffset = startPacketOffset;
                 this.startPayloadOffset = startPayloadOffset;
                 this.packetNumber = packetNumber;
+                this.largestAcknowledgedPacketNumber = largestAcknowledgedPacketNumber;
                 this.packetFirstByte = packetFirstByte;
             }
 
@@ -209,9 +294,12 @@ namespace Datagrammer.Quic.Protocol.Packet
                 cursor.Set(startPayloadOffset);
                 cursor.EncodeVariable32(packetLength);
 
-                var packetNumberBytes = packetFirstByte.SlicePacketNumberBytes(cursor).Span;
+                var packetNumberBytes = packetFirstByte.SlicePacketNumberBytes(cursor);
+                var encodedPacketNumber = largestAcknowledgedPacketNumber.HasValue
+                    ? packetNumber.EncodeByLargestAcknowledged(largestAcknowledgedPacketNumber.Value)
+                    : packetNumber;
 
-                packetNumber.Fill(packetNumberBytes);
+                encodedPacketNumber.Fill(packetNumberBytes.Span);
 
                 var headerLength = cursor - startPacketOffset;
                 var header = cursor.Peek(-headerLength);
@@ -226,8 +314,7 @@ namespace Datagrammer.Quic.Protocol.Packet
                 var sample = encryptedData.Slice(0, SampleLength);
                 var mask = cipher.CreateMask(sample.Span);
 
-                packetNumber.Fill(packetNumberBytes);
-                PacketNumber.Mask(packetNumberBytes, mask);
+                encodedPacketNumber.Fill(packetNumberBytes.Span, mask);
                 cursor.Set(startPacketOffset);
                 packetFirstByte.Mask(mask).Write(cursor);
                 cursor.Set(endPacketOffset);

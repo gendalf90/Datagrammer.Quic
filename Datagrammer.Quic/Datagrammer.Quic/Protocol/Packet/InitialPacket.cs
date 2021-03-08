@@ -49,7 +49,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             var destinationConnectionId = PacketConnectionId.Parse(cursor);
             var sourceConnectionId = PacketConnectionId.Parse(cursor);
             var token = PacketToken.Parse(cursor);
-            var payload = PacketPayload.SlicePacketBytes(cursor, firstByte, startOffset, out var packetNumber);
+            var payload = PacketPayload.SlicePacketBytes(cursor, firstByte, startOffset, null, out var packetNumber);
 
             result = new InitialPacket(version,
                                        destinationConnectionId,
@@ -79,7 +79,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             var destinationConnectionId = PacketConnectionId.Parse(cursor);
             var sourceConnectionId = PacketConnectionId.Parse(cursor);
             var token = PacketToken.Parse(cursor);
-            var payload = PacketPayload.SliceLongProtectedPacketBytes(cursor, aead, cipher, startOffset, firstByte, out var packetNumber);
+            var payload = PacketPayload.SliceLongProtectedPacketBytes(cursor, aead, cipher, startOffset, firstByte, null, out var packetNumber);
 
             result = new InitialPacket(version,
                                        destinationConnectionId,
@@ -137,7 +137,7 @@ namespace Datagrammer.Quic.Protocol.Packet
             sourceConnectionId.WriteBytes(cursor);
             token.WriteBytes(cursor);
 
-            return PacketPayload.StartLongProtectedPacketWriting(cursor, aead, cipher, startPacketOffset, firstByte, packetNumber);
+            return PacketPayload.StartLongProtectedPacketWriting(cursor, aead, cipher, startPacketOffset, firstByte, packetNumber, null);
         }
     }
 }

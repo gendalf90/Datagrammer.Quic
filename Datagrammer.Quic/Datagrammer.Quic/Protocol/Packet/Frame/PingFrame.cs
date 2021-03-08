@@ -1,14 +1,15 @@
-﻿using System;
-
-namespace Datagrammer.Quic.Protocol.Packet.Frame
+﻿namespace Datagrammer.Quic.Protocol.Packet.Frame
 {
     public static class PingFrame
     {
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out ReadOnlyMemory<byte> remainings)
+        public static bool TryParse(MemoryCursor cursor)
         {
-            return FrameType
-                .Parse(bytes, out remainings)
-                .IsPing();
+            return FrameType.TrySlice(cursor, FrameType.Ping);
+        }
+
+        public static void Write(MemoryCursor cursor)
+        {
+            FrameType.Ping.Write(cursor);
         }
     }
 }

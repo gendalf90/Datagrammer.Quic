@@ -122,7 +122,9 @@ namespace Datagrammer.Quic.Protocol.Packet.Frame
 
         public static FrameType Padding { get; } = new FrameType(0);
 
-        public static FrameType CreateAck(bool withEcn = false) => new FrameType(withEcn ? 3 : 2);
+        public static FrameType Ping { get; } = new FrameType(1);
+
+        public static FrameType CreateAck(bool withEcn = false) => new FrameType(withEcn ? 3ul : 2ul);
 
         public bool Equals(FrameType other)
         {

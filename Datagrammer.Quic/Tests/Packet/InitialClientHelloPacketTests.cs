@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Tests.Packet
 {
-    public class InitialClientHelloTests
+    public class InitialClientHelloPacketTests
     {
         [Fact]
         public void Write_ResultBytesAreExpected()

@@ -1,4 +1,4 @@
-﻿using System;
+﻿using Datagrammer.Quic.Protocol.Tls;
 
 namespace Datagrammer.Quic.Protocol.Packet
 {
@@ -8,7 +8,7 @@ namespace Datagrammer.Quic.Protocol.Packet
                                 PacketConnectionId destinationConnectionId,
                                 PacketConnectionId sourceConnectionId,
                                 PacketNumber number,
-                                ReadOnlyMemory<byte> payload)
+                                MemoryBuffer payload)
         {
             Version = version;
             DestinationConnectionId = destinationConnectionId;
@@ -25,41 +25,111 @@ namespace Datagrammer.Quic.Protocol.Packet
 
         public PacketNumber Number { get; }
 
-        public ReadOnlyMemory<byte> Payload { get; }
+        public MemoryBuffer Payload { get; }
 
-        public static bool TryParse(ReadOnlyMemory<byte> bytes, out HandshakePacket result, out ReadOnlyMemory<byte> remainings)
+        public static bool TryParse(MemoryCursor cursor, PacketNumber largestAcknowledgedPacketNumber, out HandshakePacket result)
         {
             result = new HandshakePacket();
-            remainings = bytes;
 
-            if (bytes.IsEmpty)
-            {
-                return false;
-            }
-
-            var firstByte = PacketFirstByte.Parse(bytes.Span[0]);
+            var startOffset = cursor.AsOffset();
+            var firstByte = PacketFirstByte.Parse(cursor.Peek(1).Span[0]);
 
             if (!firstByte.IsHandshakeType())
             {
                 return false;
             }
 
-            var afterFirstByteBytes = bytes.Slice(1);
-            var version = PacketVersion.Parse(afterFirstByteBytes, out var afterVersionBytes);
-            var destinationConnectionId = PacketConnectionId.Parse(afterVersionBytes, out var afterDestinationConnectionIdBytes);
-            var sourceConnectionId = PacketConnectionId.Parse(afterDestinationConnectionIdBytes, out var afterSourceConnectionIdBytes);
-            var packetBytes = PacketPayload.SlicePacketBytes(afterSourceConnectionIdBytes, out var afterPacketBytes);
-            var packetNumberBytes = firstByte.SlicePacketNumberBytes(packetBytes, out var afterPacketNumberBytes);
-            var number = PacketNumber.Parse(packetNumberBytes.Span);
+            cursor.Move(1);
 
-            remainings = afterPacketBytes;
+            var version = PacketVersion.Parse(cursor);
+            var destinationConnectionId = PacketConnectionId.Parse(cursor);
+            var sourceConnectionId = PacketConnectionId.Parse(cursor);
+            var payload = PacketPayload.SlicePacketBytes(cursor, firstByte, startOffset, largestAcknowledgedPacketNumber, out var packetNumber);
+
             result = new HandshakePacket(version,
                                          destinationConnectionId,
                                          sourceConnectionId,
-                                         number,
-                                         afterPacketNumberBytes);
+                                         packetNumber,
+                                         payload);
 
             return true;
+        }
+
+        public static bool TryParseProtected(IAead aead, ICipher cipher, MemoryCursor cursor, PacketNumber largestAcknowledgedPacketNumber, out HandshakePacket result)
+        {
+            result = new HandshakePacket();
+
+            var startOffset = cursor.AsOffset();
+            var firstByte = PacketFirstByte.Parse(cursor.Peek(1).Span[0]);
+
+            if (!firstByte.IsHandshakeType())
+            {
+                return false;
+            }
+
+            cursor.Move(1);
+
+            var version = PacketVersion.Parse(cursor);
+            var destinationConnectionId = PacketConnectionId.Parse(cursor);
+            var sourceConnectionId = PacketConnectionId.Parse(cursor);
+            var payload = PacketPayload.SliceLongProtectedPacketBytes(cursor, aead, cipher, startOffset, firstByte, largestAcknowledgedPacketNumber, out var packetNumber);
+
+            result = new HandshakePacket(version,
+                                         destinationConnectionId,
+                                         sourceConnectionId,
+                                         packetNumber,
+                                         payload);
+
+            return true;
+        }
+
+        public static PacketPayload.CursorWritingContext StartWriting(MemoryCursor cursor,
+                                                                      PacketVersion version,
+                                                                      PacketConnectionId destinationConnectionId,
+                                                                      PacketConnectionId sourceConnectionId,
+                                                                      PacketNumber largestAcknowledgedPacketNumber,
+                                                                      PacketNumber packetNumber)
+        {
+            var startOffset = cursor.AsOffset();
+            var firstByte = new PacketFirstByte()
+                .SetHandshake()
+                .SetMaxPacketNumberLength();
+
+            firstByte.Write(cursor);
+            version.WriteBytes(cursor);
+            destinationConnectionId.WriteBytes(cursor);
+            sourceConnectionId.WriteBytes(cursor);
+
+            var context = PacketPayload.StartPacketWriting(cursor, startOffset);
+            var packetNumberBytes = firstByte.SlicePacketNumberBytes(cursor);
+
+            packetNumber
+                .EncodeByLargestAcknowledged(largestAcknowledgedPacketNumber)
+                .Fill(packetNumberBytes.Span);
+
+            return context;
+        }
+
+        public static PacketPayload.LongProtectedWritingContext StartProtectedWriting(IAead aead,
+                                                                                      ICipher cipher,
+                                                                                      MemoryCursor cursor,
+                                                                                      PacketVersion version,
+                                                                                      PacketConnectionId destinationConnectionId,
+                                                                                      PacketConnectionId sourceConnectionId,
+                                                                                      PacketNumber packetNumber,
+                                                                                      PacketNumber largestAcknowledgedPacketNumber)
+        {
+            var startPacketOffset = cursor.AsOffset();
+            var firstByte = new PacketFirstByte()
+                .SetHandshake()
+                .SetMaxPacketNumberLength();
+
+            firstByte.Write(cursor);
+            version.WriteBytes(cursor);
+            destinationConnectionId.WriteBytes(cursor);
+            sourceConnectionId.WriteBytes(cursor);
+
+            return PacketPayload.StartLongProtectedPacketWriting(cursor, aead, cipher, startPacketOffset, firstByte, packetNumber, largestAcknowledgedPacketNumber);
         }
     }
 }
