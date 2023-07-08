@@ -28,31 +28,6 @@ namespace Tests
         //[Fact]
         public void Test1()
         {
-            var buff = new byte[PacketBuffer.MaxPacketSize];
-            var pBuff = Utils.ParseHexString("060040f1010000ed0303ebf8fa56f12939b9584a3896472ec40bb863cfd3e86804fe3a47f06a2b69484c00000413011302010000c000000010000e00000b6578616d706c652e636f6dff01000100000a00080006001d0017001800100007000504616c706e000500050100000000003300260024001d00209370b2c9caa47fbabaf4559fedba753de171fa71f50f1ce15d43e994ec74d748002b0003020304000d0010000e0403050306030203080408050806002d00020101001c00024001ffa500320408ffffffffffffffff05048000ffff07048000ffff0801100104800075300901100f088394c8f03e51570806048000ffff");
-            var hBuff = Utils.ParseHexString("c3ff000020088394c8f03e5157080000449e00000002");
-
-            Array.Resize(ref pBuff, 1162);
-            Array.Copy(hBuff, buff, hBuff.Length);
-            Array.Copy(pBuff, 0, buff, hBuff.Length, pBuff.Length);
-            Array.Resize(ref buff, hBuff.Length + pBuff.Length);
-
-            var encryptedBuff = new byte[PacketBuffer.MaxPacketSize];
-            var aead = Cipher.TLS_AES_128_GCM_SHA256.CreateAead(Utils.ParseHexString("6b26114b9cba2b63a9e8dd4f"), Utils.ParseHexString("175257a31eb09dea9366d8bb79ad80ba"));
-            //var token = aead.StartEncryption(pBuff, encryptedBuff);
-            //token.UseSequenceNumber(2);
-            //token.UseAssociatedData(hBuff);
-            //aead.Finish(token);
-            //var encryptedHex = Utils.ToHexString(token.Result.ToArray());
-
-            var c = new MemoryCursor(buff);
-            var res1 = InitialPacket.TryParse(c, out var p);
-            using (p.Payload.SetCursor(c))
-            {
-                var res2 = CryptoFrame.TryParse(c, out var f);
-            }
-            var res3 = c.IsEnd();
-
             var buffer = new byte[PacketBuffer.MaxPacketSize];
             var cursor = new MemoryCursor(buffer);
 
